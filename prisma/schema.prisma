@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  credential Int @unique
+  name String?
+  lastname String?
+  password String
+  tickets Ticket[]
+}
+
+model Ticket {
+  id Int @id @default(autoincrement())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  type TicketType
+  flowers Flower[]
+  flowerId Int
+}
+
+// TODO: fix the model Flower on amount field
+model Flower {
+  id Int @id @default(autoincrement())
+  name String
+  type String
+  status FlowerStatus
+  amount Int?
+  tickets Ticket @relation(fields: [ticketId], references: [id])
+  ticketId Int
+  createdAt DateTime @default(now())
+}
+
+// TODO: Modify FlowerStatus enum
+enum FlowerStatus {
+  available
+  sold
+}
+
+enum TicketType {
+  normal
+  venta
+}
