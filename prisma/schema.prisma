@@ -14,6 +14,7 @@ model User {
   lastname String?
   password String
   tickets Ticket[]
+  role Role
 }
 
 model Ticket {
@@ -21,29 +22,50 @@ model Ticket {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
   type TicketType
+  status TicketStatus
   flowers Flower[]
-  flowerId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// TODO: fix the model Flower on amount field
-model Flower {
+model FlowerCategory {
   id Int @id @default(autoincrement())
   name String
-  type String
+  flowers Flower[]
+}
+model Flower {
+  id Int @id @default(autoincrement())
   status FlowerStatus
-  amount Int?
+  amount Int
+  Amount_sell Int?
+  price Float
+  min_amount Int?
   tickets Ticket @relation(fields: [ticketId], references: [id])
+  flowerCategory FlowerCategory @relation(fields: [flowerCategoryId], references: [id], onDelete: Cascade)
+  flowerCategoryId Int
   ticketId Int
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// TODO: Modify FlowerStatus enum
+
+enum Role {
+  ADMIN
+  OWNER
+}
+
 enum FlowerStatus {
-  available
-  sold
+  Marchitas
+  Frescas
+  Vendidas
 }
 
 enum TicketType {
-  normal
-  venta
+  Normal
+  Venta
+}
+
+enum TicketStatus {
+  Abierto
+  Cerrado
 }

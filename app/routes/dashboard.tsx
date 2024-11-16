@@ -4,6 +4,8 @@ import type {
   LoaderFunctionArgs,
 } from "@remix-run/node";
 import { authenticator } from "~/services/auth.server";
+import DashboardLayout from "~/layouts/dashboard.layout";
+import { useLoaderData } from "@remix-run/react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -19,9 +21,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
-  return null;
+  return user!;
 }
 
 export default function Dashboard() {
-  return <div>This is protected.</div>;
+  const data = useLoaderData<typeof loader>();
+  return (
+    <DashboardLayout user={data}>
+      <main className="px-5">
+        <p>Todo lo que necesitas en un solo lugar.</p>
+      </main>
+    </DashboardLayout>
+  );
 }
