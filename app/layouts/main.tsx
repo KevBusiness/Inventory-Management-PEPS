@@ -1,13 +1,18 @@
+import { useLocation, Outlet } from "@remix-run/react";
+import lodash from "lodash";
 import { User } from "@prisma/client";
 import { AiFillHome, AiFillProduct } from "react-icons/ai";
-import { FaCloudUploadAlt } from "react-icons/fa";
-import { IoCloudUploadOutline } from "react-icons/io5";
 import { PiFlowerTulipDuotone } from "react-icons/pi";
 import { TbInvoice } from "react-icons/tb";
 import { Button } from "~/components/ui/button";
+import { MdOutlineInventory2 } from "react-icons/md";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
+import { CiCalculator2 } from "react-icons/ci";
+import { BsBell } from "react-icons/bs";
 
+// TODO: Update lodash import
+const { capitalize } = lodash;
 const routes = [
   {
     path: "/dashboard",
@@ -21,8 +26,13 @@ const routes = [
   },
   {
     path: "/inventario",
-    label: "Inventario",
-    icon: <AiFillProduct />,
+    label: "Inventario PEPS",
+    icon: <MdOutlineInventory2 />,
+  },
+  {
+    path: "/calculadora",
+    label: "Calculadora",
+    icon: <CiCalculator2 />,
   },
   // {
   //   path: "/new-ticket",
@@ -34,19 +44,22 @@ const routes = [
 
 const colors = ["lime", "rose", "blue"];
 
-export default function DashboardLayout({
+export default function MainLayout({
   children,
   user,
 }: {
   children: React.ReactNode;
   user: User;
 }) {
+  const location = useLocation();
   return (
     <div className="flex h-screen">
       <aside
         className={cn(
-          "flex flex-col justify-between w-56 py-5 bg-gradient-to-b ",
-          `from-${colors[0]}-200 to-${colors[0]}-300`
+          colors[0] === "lime"
+            ? "from-blue-200 to-blue-500"
+            : "from-rose-200 to-rose-500",
+          "flex flex-col justify-between w-56 py-5 bg-gradient-to-b "
         )}
       >
         <div className="space-y-5">
@@ -80,12 +93,28 @@ export default function DashboardLayout({
           </Button>
         </div>
       </aside>
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto pb-5">
         <div className="flex items-center justify-between pt-5 px-5">
-          <h2 className="text-2xl font-semibold">Dashboard</h2>
-          <p>
-            Hola! {user.name} {user.lastname}
-          </p>
+          <h2 className="text-2xl font-semibold">
+            {capitalize(location.pathname.split("/")[1])}
+          </h2>
+          <div className="flex items-center gap-5">
+            <p>
+              Hola!
+              <span className="ml-2 underline underline-offset-8">
+                {user.name} {user.lastname}
+              </span>
+            </p>
+            {/* Todo ADD sistema of notifications */}
+            <div className="relative">
+              <Button size={"icon"} type="button" variant={"ghost"}>
+                <BsBell />
+              </Button>
+              <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
+                8
+              </div>
+            </div>
+          </div>
         </div>
         {children}
       </div>

@@ -10,6 +10,23 @@ export function getErrorsFromSchema(schema: Schema, data: Record<string, any>) {
   }));
   return x;
 }
+
+export function formatToDate(dateString: string): string {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("es-MX", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+export function formatToMXN(amount: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  }).format(amount);
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
