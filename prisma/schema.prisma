@@ -14,6 +14,7 @@ model User {
   lastname String?
   password String
   tickets Ticket[]
+  sales Sale[]
   role Role
 }
 
@@ -24,8 +25,20 @@ model Ticket {
   type TicketType
   status TicketStatus
   flowers Flower[]
+  sales Sale[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Sale {
+  id Int @id @default(autoincrement())
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  createdAt DateTime @default(now())
+  updatedFlowers String
+  total Float
 }
 
 model FlowerCategory {
@@ -61,11 +74,12 @@ enum FlowerStatus {
 }
 
 enum TicketType {
-  Normal
-  Venta
+  Pedido
+  Entregado
 }
 
 enum TicketStatus {
-  Abierto
-  Cerrado
+  Disponible
+  Vendido
+  Bajo
 }
