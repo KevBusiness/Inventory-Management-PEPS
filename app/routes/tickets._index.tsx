@@ -49,7 +49,7 @@ export default function TicketsMain() {
   const data = useLoaderData<typeof loader>();
   return (
     <>
-      <p className="mt-2 text-sm">Entradas y salidas del inventario.</p>
+      <p className="mt-2 text-sm">Entradas del inventario.</p>
       <div className="flex items-center gap-x-5 my-5">
         <Button className="h-12 w-fit">
           <Link to="/tickets/new">Nuevo ticket</Link>

@@ -1,7 +1,8 @@
 import { useLocation, Outlet } from "@remix-run/react";
 import lodash from "lodash";
 import { User } from "@prisma/client";
-import { AiFillHome, AiFillProduct } from "react-icons/ai";
+import { IoHomeOutline } from "react-icons/io5";
+import { VscOutput } from "react-icons/vsc";
 import { PiFlowerTulipDuotone } from "react-icons/pi";
 import { TbInvoice } from "react-icons/tb";
 import { Button } from "~/components/ui/button";
@@ -17,7 +18,7 @@ const routes = [
   {
     path: "/dashboard",
     label: "Dashboard",
-    icon: <AiFillHome />,
+    icon: <IoHomeOutline />,
   },
   {
     path: "/tickets",
@@ -28,6 +29,11 @@ const routes = [
     path: "/inventario",
     label: "Inventario PEPS",
     icon: <MdOutlineInventory2 />,
+  },
+  {
+    path: "/nueva-venta",
+    label: "Nueva Venta",
+    icon: <VscOutput />,
   },
   {
     path: "/calculadora",
@@ -105,7 +111,7 @@ export default function MainLayout({
                 {user.name} {user.lastname}
               </span>
             </p>
-            {/* Todo ADD sistema of notifications */}
+            {/* TODO: ADD sistema of notifications */}
             <div className="relative">
               <Button size={"icon"} type="button" variant={"ghost"}>
                 <BsBell />
