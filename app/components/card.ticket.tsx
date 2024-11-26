@@ -19,6 +19,7 @@ interface TicketData extends Ticket {
     price: number;
     amount: number;
   }[];
+  sales: any[];
 }
 
 export default function CardTicket({ ticket }: { ticket: TicketData }) {
@@ -54,19 +55,21 @@ export default function CardTicket({ ticket }: { ticket: TicketData }) {
             </span>
           </p>
           {/* TODO: Create a new model of sales adjunt to ticket model */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="flex items-center gap-x-1 bg-neutral-50 p-1 rounded-md">
-                  <span className="text-xs">4</span>
-                  <Paperclip size={13} />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>4 Entradas De Venta</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {ticket.sales.length > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <div className="flex items-center gap-x-1 bg-neutral-50 p-1 rounded-md">
+                    <span className="text-xs">{ticket.sales.length}</span>
+                    <Paperclip size={13} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{ticket.sales.length} Entradas De Venta</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         <div className="flex justify-between items-center">
           <Badge className="w-fit">{ticket.type}</Badge>

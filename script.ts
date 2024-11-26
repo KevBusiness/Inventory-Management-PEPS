@@ -36,8 +36,8 @@ async function main() {
     const createdAt = faker.date.recent({ days: 75 });
     const ticket = await db.ticket.create({
       data: {
-        status: "Abierto",
-        type: "Normal",
+        status: "Disponible",
+        type: "Entregado",
         userId: users[faker.number.int({ min: 0, max: 1 })].id,
         createdAt: createdAt,
         updatedAt: faker.date.between({ from: createdAt, to: new Date() }),
@@ -60,15 +60,15 @@ async function main() {
   //   tickets.push(ticket);
   // }
 
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 40; i++) {
     const amount = faker.number.int({ min: 500, max: 20000 });
     const amountSell = faker.number.int({ min: 0, max: amount });
     const createdAt = faker.date.recent({ days: 10 });
 
     await db.flower.create({
       data: {
-        status: "Frescas",
-        amount: amount,
+        freshQuantity: amount,
+        wiltedQuantity: 0,
         Amount_sell: amountSell,
         price: faker.number.int({ min: 0, max: 100 }),
         min_amount: faker.number.int(300),
@@ -87,8 +87,8 @@ async function main() {
 
     await db.flower.create({
       data: {
-        status: "Marchitas",
-        amount: amount,
+        freshQuantity: amount,
+        wiltedQuantity: 0,
         Amount_sell: amountSell,
         price: faker.number.int({ min: 0, max: 100 }),
         min_amount: faker.number.int(300),
@@ -107,8 +107,8 @@ async function main() {
 
     await db.flower.create({
       data: {
-        status: "Vendidas",
-        amount: amount,
+        freshQuantity: amount,
+        wiltedQuantity: amount / 2,
         Amount_sell: amountSell,
         price: faker.number.int({ min: 0, max: 100 }),
         min_amount: faker.number.int(300),

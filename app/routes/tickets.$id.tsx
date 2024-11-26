@@ -151,10 +151,13 @@ export default function ShowTicket() {
                   {formatToMXN(flower.price * flower.amount)}
                 </TableCell>
                 <TableCell>
+                  {/* TODO: ME QUEDE AQUI */}
                   <Badge
                     className={cn(
                       flower.status === "Frescas"
                         ? "bg-green-400"
+                        : flower.status === "Vendidas"
+                        ? "bg-neutral-400"
                         : "bg-red-400",
                       "h-6"
                     )}

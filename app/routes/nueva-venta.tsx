@@ -3,6 +3,7 @@ import {
   ActionFunctionArgs,
   LoaderFunctionArgs,
   MetaFunction,
+  redirect,
 } from "@remix-run/node";
 import db from "~/database/prisma.server";
 import {
@@ -14,7 +15,7 @@ import {
   useNavigation,
 } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
-import { cn, formatToDate } from "~/lib/utils";
+import { cn, formatToDate, formatToMXN } from "~/lib/utils";
 import { useToast } from "~/hooks/use-toast";
 import { Ticket } from "@prisma/client";
 import { TbInvoice } from "react-icons/tb";
@@ -28,6 +29,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Toaster } from "~/components/ui/toaster";
 import { ToastAction } from "~/components/ui/toast";
+import { commitSession, getSession } from "~/services/alerts.session.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -42,49 +44,63 @@ export const meta: MetaFunction = () => {
 type FlowersData = {
   id: string;
   name: string;
-  value: string;
+  value: number;
+  total: number;
+  currentAmount: number;
 };
 
 export async function action({ request }: ActionFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
+  const session = await getSession(request.headers.get("Cookie"));
   const body = await request.formData();
   const url = new URL(request.url);
   const tickedId = url.searchParams.get("onTicket");
   const flowers = JSON.parse(body.get("flowers")! as string) as FlowersData[];
   flowers.forEach(async (flower) => {
-    await db.flower
-      .update({
-        where: { id: parseInt(flower.id) },
-        data: {
-          Amount_sell: +parseInt(flower.value),
+    await db.flower.update({
+      where: {
+        id: +flower.id,
+      },
+      data: {
+        status:
+          // TODO: fix the state of the flower right side
+          flower.currentAmount - flower.value === 0 ? "Vendidas" : "Frescas",
+        Amount_sell: {
+          increment: flower.value,
         },
-      })
-      .catch((error) => {
-        console.error(error);
-        throw new Error("Error al actualizar la cantidad de flores.");
-      });
+        total_sales: {
+          increment: flower.total,
+        },
+      },
+    });
   });
   if (tickedId) {
     await db.ticket.update({
       where: {
         // TODO: update this
-        id: parseInt(tickedId),
+        id: +tickedId,
       },
       data: {
         updatedAt: new Date(),
       },
     });
-    // await db.sale.create({
-    //   data: {
-    //     tickedId: parseInt(tickedId),
-    //     userId: user.id!,
-    //     createdAt: new Date,
-    //     updatedFlowers: JSON.stringify(flowers)
-    //     total: 5000,
-    //   },
-    // });
+    await db.sale.create({
+      data: {
+        ticketId: +tickedId,
+        userId: user?.id!,
+        createdAt: new Date(),
+        updatedFlowers: JSON.stringify(flowers),
+        total: flowers.reduce((acc, flower) => acc + flower.total, 0),
+      },
+    });
+    session.flash("success_sale", "Venta creada correctamente.");
+    return redirect("/dashboard", {
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    });
   }
   return null;
 }
@@ -93,6 +109,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
+  const session = await getSession(request.headers.get("Cookie"));
   let tickets = null;
   let ticketFound = null;
   const url = new URL(request.url);
@@ -101,7 +118,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (!tickedId) {
     tickets = await db.ticket
       .findMany({
-        // orderBy: { createdAt: "asc" },
+        include: {
+          sales: {
+            select: {
+              total: true,
+            },
+          },
+        },
       })
       .catch((error) => {
         console.error(error);
@@ -120,6 +143,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
               price: true,
               amount: true,
               min_amount: true,
+              Amount_sell: true,
               status: true,
               flowerCategory: {
                 select: {
@@ -137,7 +161,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       });
   }
 
-  return { user: user!, tickets, ticketFound };
+  return Response.json(
+    { user: user!, tickets, ticketFound },
+    {
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    }
+  );
 }
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -215,9 +246,9 @@ export default function NuevaVenta() {
   const navigation = useNavigation();
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState<Record<string, string>[] | null>(
-    null
-  );
+  const [formData, setFormData] = useState<
+    Record<string, string | number>[] | null
+  >(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const step = searchParams.get("step")
     ? parseInt(searchParams.get("step")!)
@@ -228,11 +259,13 @@ export default function NuevaVenta() {
     const formData = new FormData(e.currentTarget);
     const flowers = Object.fromEntries(formData) as Record<string, string>;
     const flowersFiltered = Object.entries(flowers)
-      .filter(([key, value]) => value !== "")
+      .filter(([_, value]) => value !== "")
       .map(([key, value]) => ({
-        id: key.split("-")[2],
+        id: key.split("-")[4],
+        total: +value * +key.split("-")[3],
+        currentAmount: +key.split("-")[2],
         name: key.split("-")[1],
-        value,
+        value: +value,
       }));
     if (flowersFiltered.length > 0) {
       setFormData(flowersFiltered);
@@ -305,32 +338,43 @@ export default function NuevaVenta() {
                   <span className="">Nueva Cantidad</span>
                 </div>
                 <div>
-                  {data.ticketFound.flowers.map((flower) => (
-                    <div
-                      key={flower.id}
-                      className="bg-white hover:bg-neutral-50 flex items-center justify-around border-b py-2 px-2"
-                    >
-                      <div className="w-1/3">
-                        <Label
-                          htmlFor={`flower-${flower.flowerCategory.name}-${flower.id}`}
-                          className="text-md block w-fit shadow-lg text-neutral-900 font-semibold hover:cursor-pointer rounded-sm bg-yellow-200 p-1 ring-4 ring-yellow-100 border-2 border-yellow-300"
-                        >
-                          {flower.flowerCategory.name}
-                        </Label>
+                  {data.ticketFound.flowers.map((flower) => {
+                    if (flower.status === "Vendidas") return null;
+                    if (flower.amount - (flower.Amount_sell || 0) <= 0)
+                      return null;
+                    return (
+                      <div
+                        key={flower.id}
+                        className="bg-white hover:bg-neutral-50 flex items-center justify-around border-b py-2 px-2"
+                      >
+                        <div className="w-1/3">
+                          <Label
+                            htmlFor={`flower-${flower.flowerCategory.name}-${
+                              flower.amount - (flower.Amount_sell || 0)
+                            }-${flower.price}-${flower.id}`}
+                            className="text-md block w-fit shadow-lg text-neutral-900 font-semibold hover:cursor-pointer rounded-sm bg-yellow-200 p-1 ring-4 ring-yellow-100 border-2 border-yellow-300"
+                          >
+                            {flower.flowerCategory.name}
+                          </Label>
+                        </div>
+                        <span className="w-1/3 text-neutral-600 font-normal text-sm">
+                          {flower.amount - (flower.Amount_sell || 0)} Unidades
+                        </span>
+                        <Input
+                          id={`flower-${flower.flowerCategory.name}-${
+                            flower.amount - (flower.Amount_sell || 0)
+                          }-${flower.price}-${flower.id}`}
+                          className="h-12 w-40 font-light placeholder-shown:invalid:border-neutral-200 focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500 focus:valid:ring-1 focus:valid:ring-blue-500 focus:valid:border-blue-200 valid:border-neutral-500"
+                          type="number"
+                          name={`flower-${flower.flowerCategory.name}-${
+                            flower.amount - (flower.Amount_sell || 0)
+                          }-${flower.price}-${flower.id}`}
+                          max={flower.amount - (flower.Amount_sell || 0)}
+                          placeholder="Ajustar Cantidad"
+                        />
                       </div>
-                      <span className="w-1/3 text-neutral-600 font-normal text-sm">
-                        {flower.amount} Unidades
-                      </span>
-                      <Input
-                        id={`flower-${flower.flowerCategory.name}-${flower.id}`}
-                        className="h-12 w-40 font-light placeholder-shown:invalid:border-neutral-200 focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500 focus:valid:ring-1 focus:valid:ring-blue-500 focus:valid:border-blue-200 valid:border-neutral-500"
-                        type="number"
-                        name={`flower-${flower.flowerCategory.name}-${flower.id}`}
-                        max={flower.amount}
-                        placeholder="Ajustar Cantidad"
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <Button
                   type="submit"
@@ -366,7 +410,7 @@ export default function NuevaVenta() {
             // TODO: Add a new component for this, NOTE: This is a temporary solution
             <>
               <div className="w-full">
-                <div className="bg-white w-[700px] h-fit mx-auto rounded-sm overflow-hidden pb-2 mt-2">
+                <div className="bg-white w-[700px] h-fit mx-auto rounded-sm overflow-hidden mt-2">
                   <div className="flex w-full gap-5 mb-2 bg-blue-200 p-3 justify-evenly">
                     {Array.from({ length: 13 }, (_, i) => (
                       <div
@@ -378,14 +422,29 @@ export default function NuevaVenta() {
                   <p className="text-lg text-center border-b pb-2">
                     Resumen de unidades actualizadas.
                   </p>
-                  {formData.map(({ id, name, value }) => (
+                  {formData.map(({ id, name, value, total, currentAmount }) => (
                     <ul
                       key={id}
-                      className="border-b border-b-red-200 px-5 py-2"
+                      className="border-b border-b-red-200 px-5 py-2 text-center"
                     >
-                      {name} - {value}
+                      {name} - Unidades vendidas: {value} -{" "}
+                      {formatToMXN(total as number)} -{" "}
+                      {Number(currentAmount) - Number(value) === 0
+                        ? "Liquidando"
+                        : null}
                     </ul>
                   ))}
+                  <p className="py-2 text-end px-5 font-semibold">
+                    Total de venta{" "}
+                    <span>
+                      {formatToMXN(
+                        formData.reduce(
+                          (acc, flower) => acc + (flower.total as number),
+                          0
+                        )
+                      )}
+                    </span>
+                  </p>
                 </div>
                 <div className="flex justify-end mb-5 w-[700px] mx-auto">
                   <Button
@@ -435,7 +494,13 @@ export default function NuevaVenta() {
   );
 }
 
-export function TicketCard({ data }: { data: Ticket }) {
+interface TicketCardProps extends Ticket {
+  sales: {
+    total: number;
+  }[];
+}
+
+export function TicketCard({ data }: { data: TicketCardProps }) {
   const [_, setSearchParams] = useSearchParams();
   return (
     <div
@@ -450,7 +515,10 @@ export function TicketCard({ data }: { data: Ticket }) {
           {formatToDate(data.createdAt.toString())}
         </span>
       </p>
-      <p className="text-xs">Venta Acumulada: $1,500.00</p>
+      <p className="text-xs">
+        Venta Acumulada:{" "}
+        {formatToMXN(data.sales.reduce((acc, sale) => acc + sale.total, 0))}
+      </p>
       <div className="flex gap-x-1 items-center">
         <div className="h-3 w-3 rounded-full bg-green-400 animate-pulse ring-1 ring-green-200 border border-green-100"></div>
         <span className="text-xs">Stock pendiente</span>

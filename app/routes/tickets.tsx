@@ -15,9 +15,9 @@ export default function Tickets() {
   const data = useLoaderData<typeof loader>();
   return (
     <MainLayout user={data}>
-      <main className="px-5">
+      <div className="px-5">
         <Outlet />
-      </main>
+      </div>
     </MainLayout>
   );
 }

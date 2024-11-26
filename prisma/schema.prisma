@@ -22,7 +22,7 @@ model Ticket {
   id Int @id @default(autoincrement())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
-  type TicketType
+  type String
   status TicketStatus
   flowers Flower[]
   sales Sale[]
@@ -48,11 +48,12 @@ model FlowerCategory {
 }
 model Flower {
   id Int @id @default(autoincrement())
-  status FlowerStatus
-  amount Int
+  freshQuantity Int
+  wiltedQuantity Int
   Amount_sell Int?
   price Float
   min_amount Int?
+  total_sales Float @default(0)
   tickets Ticket @relation(fields: [ticketId], references: [id])
   flowerCategory FlowerCategory @relation(fields: [flowerCategoryId], references: [id], onDelete: Cascade)
   flowerCategoryId Int
@@ -65,17 +66,6 @@ model Flower {
 enum Role {
   ADMIN
   OWNER
-}
-
-enum FlowerStatus {
-  Marchitas
-  Frescas
-  Vendidas
-}
-
-enum TicketType {
-  Pedido
-  Entregado
 }
 
 enum TicketStatus {

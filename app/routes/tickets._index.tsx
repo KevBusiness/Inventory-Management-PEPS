@@ -35,6 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           },
         },
       },
+      sales: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -52,7 +53,7 @@ export default function TicketsMain() {
       <p className="mt-2 text-sm">Entradas del inventario.</p>
       <div className="flex items-center gap-x-5 my-5">
         <Button className="h-12 w-fit">
-          <Link to="/tickets/new">Nuevo ticket</Link>
+          <Link to="/new/ticket">Nuevo ticket</Link>
         </Button>
       </div>
       <div className="grid grid-cols-5 gap-5">

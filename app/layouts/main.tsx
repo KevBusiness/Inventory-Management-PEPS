@@ -8,6 +8,7 @@ import { TbInvoice } from "react-icons/tb";
 import { Button } from "~/components/ui/button";
 import { MdOutlineInventory2 } from "react-icons/md";
 import { Separator } from "~/components/ui/separator";
+import { Toaster } from "~/components/ui/toaster";
 import { cn } from "~/lib/utils";
 import { CiCalculator2 } from "react-icons/ci";
 import { BsBell } from "react-icons/bs";
@@ -59,71 +60,74 @@ export default function MainLayout({
 }) {
   const location = useLocation();
   return (
-    <div className="flex h-screen">
-      <aside
-        className={cn(
-          colors[0] === "lime"
-            ? "from-blue-200 to-blue-500"
-            : "from-rose-200 to-rose-500",
-          "flex flex-col justify-between w-56 py-5 bg-gradient-to-b "
-        )}
-      >
-        <div className="space-y-5">
-          <div className="flex items-center justify-between px-5">
-            <h1 className="text-md">Carrillo F | Administrador</h1>
-            <PiFlowerTulipDuotone size={30} />
-          </div>
-          <Separator className="bg-lime-50 h-[2px]" />
-          <nav className="px-3 space-y-2">
-            {routes.map((route) => (
-              <Button
-                key={route.path}
-                asChild
-                className="h-12 w-full bg-white"
-                variant={"secondary"}
-              >
-                <a
-                  href={route.path}
-                  className="flex justify-between items-center"
+    <main>
+      <div className="flex h-screen">
+        <aside
+          className={cn(
+            colors[0] === "lime"
+              ? "from-lime-200 to-lime-500"
+              : "from-rose-200 to-rose-500",
+            "flex flex-col justify-between w-56 py-5 bg-gradient-to-b "
+          )}
+        >
+          <div className="space-y-5">
+            <div className="flex items-center justify-between px-5">
+              <h1 className="text-md">Carrillo F | Administrador</h1>
+              <PiFlowerTulipDuotone size={30} />
+            </div>
+            <Separator className="bg-lime-50 h-[2px]" />
+            <nav className="px-3 space-y-2">
+              {routes.map((route) => (
+                <Button
+                  key={route.path}
+                  asChild
+                  className="h-12 w-full bg-white"
+                  variant={"secondary"}
                 >
-                  <span>{route.label}</span>
-                  {route.icon}
-                </a>
-              </Button>
-            ))}
-          </nav>
-        </div>
-        <div className="px-3">
-          <Button asChild className="h-12 w-full">
-            <a href="/logout">Cerrar sesión</a>
-          </Button>
-        </div>
-      </aside>
-      <div className="flex-1 overflow-y-auto pb-5">
-        <div className="flex items-center justify-between pt-5 px-5">
-          <h2 className="text-2xl font-semibold">
-            {capitalize(location.pathname.split("/")[1])}
-          </h2>
-          <div className="flex items-center gap-5">
-            <p>
-              Hola!
-              <span className="ml-2 underline underline-offset-8">
-                {user.name} {user.lastname}
-              </span>
-            </p>
-            {/* TODO: ADD sistema of notifications */}
-            <div className="relative">
-              <Button size={"icon"} type="button" variant={"ghost"}>
-                <BsBell />
-              </Button>
-              <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
-                8
+                  <a
+                    href={route.path}
+                    className="flex justify-between items-center"
+                  >
+                    <span>{route.label}</span>
+                    {route.icon}
+                  </a>
+                </Button>
+              ))}
+            </nav>
+          </div>
+          <div className="px-3">
+            <Button asChild className="h-12 w-full">
+              <a href="/logout">Cerrar sesión</a>
+            </Button>
+          </div>
+        </aside>
+        <div className="flex-1 overflow-y-auto pb-5">
+          <div className="flex items-center justify-between pt-5 px-5">
+            <h2 className="text-2xl font-semibold">
+              {capitalize(location.pathname.split("/")[1])}
+            </h2>
+            <div className="flex items-center gap-5">
+              <p>
+                Hola!
+                <span className="ml-2 underline underline-offset-8">
+                  {user.name} {user.lastname}
+                </span>
+              </p>
+              {/* TODO: ADD sistema of notifications */}
+              <div className="relative">
+                <Button size={"icon"} type="button" variant={"ghost"}>
+                  <BsBell />
+                </Button>
+                <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
+                  8
+                </div>
               </div>
             </div>
           </div>
+          {children}
         </div>
-        {children}
       </div>
-    </div>
+      <Toaster />
+    </main>
   );
 }

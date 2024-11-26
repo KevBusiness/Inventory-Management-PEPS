@@ -4,7 +4,7 @@ import { AuthorizationError } from "remix-auth";
 import { User } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import db from "../database/prisma.server";
-import { sessionStorage } from "~/services/session.server";
+import { sessionStorage } from "~/services/user.session.server";
 import { loginValidation } from "~/schemas/user.schema";
 import { getErrorsFromSchema } from "~/lib/utils";
 import type { ErrorsFromValidations } from "~/lib/types";
