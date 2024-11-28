@@ -27,10 +27,14 @@ export default function InputCustom({
   return (
     <Input
       className={cn(
-        `valid:border-${color}-500 focus:valid:ring-${color}-500 focus:valid:border-${color}-200 ${
-          width ? width : null
-        }`,
-        "h-12 font-light border-2 placeholder-shown:invalid:border-neutral-200 focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500 focus:valid:ring-1 placeholder-shown:valid:border-neutral-200 "
+        `${
+          color === "blue"
+            ? "valid:border-blue-500 focus:valid:ring-blue-500 focus:valid:border-blue-200"
+            : color === "amber"
+            ? "valid:border-amber-500 focus:valid:ring-amber-500 focus:valid:border-amber-200"
+            : "valid:border-green-500 focus:valid:ring-green-500 focus:valid:border-green-200"
+        } ${width ? width : null}`,
+        "h-12 font-light border placeholder-shown:invalid:border-neutral-200 focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500 focus:valid:ring-1 placeholder-shown:valid:border-neutral-200 "
       )}
       placeholder={placeholder}
       max={max}

@@ -30,7 +30,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import TableForm from "~/components/tableForm";
 import { toast } from "~/hooks/use-toast";
 import { FlowerCategory } from "@prisma/client";
 import FlowerNotebook from "~/components/flower-notebook";
@@ -42,6 +41,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { authenticator } from "~/services/auth.server";
+import PivotTable from "~/components/form/pivot_table";
 
 const steps = [
   { label: "Seleccionar Flores", icon: <TbInvoice /> },
@@ -105,7 +105,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     case "action_confirm":
       const flowersData = formData.get("flowers");
-      const status_type = formData.get("status_type") as string;
+      const status_type = formData.get("status_type") as "Pedido" | "Entregado";
       if (!flowersData) {
         throw new Error("Flowers data is missing");
       }
@@ -113,7 +113,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         data: {
           type: status_type,
           userId: Number(user?.id),
-          status: "Disponible",
+          // TODO: ADD THE CORRECT STATUS
+          fase: status_type,
+          revenue: 0,
         },
       });
       const flowers = JSON.parse(flowersData as string) as FlowersFields[];
@@ -434,11 +436,11 @@ export default function NewTicket() {
           </div>
         </div>
       ) : parseInt(step) === 1 && selectedFlowers.length > 0 ? (
-        <div className="flex-1 px-5 pt-5 pb-10 overflow-y-auto">
-          <TableForm
+        <div className="flex-1 px-5 pb-10 overflow-y-auto">
+          <PivotTable
             header={headerFields}
             data={selectedFlowers}
-            type="Ticket"
+            type="ticket"
             handleAmount={handleAmount}
           />
           <p className="text-muted-foreground text-sm text-center">
@@ -456,7 +458,7 @@ export default function NewTicket() {
         </div>
       ) : parseInt(step) === 2 && flowersFields.length > 0 ? (
         <div className="flex-1 px-5 pt-5 pb-10 overflow-y-auto">
-          <FlowerNotebook flowers={flowersFields} />
+          <FlowerNotebook flowers={flowersFields} type="ticket" />
           <p className="text-muted-foreground text-sm text-center">
             Resumen de la entrada.
           </p>
@@ -484,13 +486,12 @@ export default function NewTicket() {
               value={JSON.stringify(flowersFields)}
               name="flowers"
             />
-            <Select name="status_type">
+            <Select name="status_type" defaultValue="Pedido">
               <SelectTrigger className="w-64 bg-white h-12">
                 <SelectValue placeholder="Seleccionar estado." />
               </SelectTrigger>
               <SelectContent className="bg-white">
-                <SelectItem value="Encargado">Encargado</SelectItem>
-                <SelectItem value="En_Camino">En Camino</SelectItem>
+                <SelectItem value="Pedido">Pedido</SelectItem>
                 <SelectItem value="Entregado">Entregado</SelectItem>
               </SelectContent>
             </Select>

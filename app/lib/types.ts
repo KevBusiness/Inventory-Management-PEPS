@@ -8,3 +8,12 @@ export type ErrorsFromValidations = {
   message: string;
   path: string;
 };
+
+export type UpdatedFlowers = {
+  id: number;
+  currentAmount: number;
+  type: string;
+  name: string;
+  value: number;
+  price: number;
+};

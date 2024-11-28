@@ -32,7 +32,7 @@ const routes = [
     icon: <MdOutlineInventory2 />,
   },
   {
-    path: "/nueva-venta",
+    path: "/new/sale",
     label: "Nueva Venta",
     icon: <VscOutput />,
   },

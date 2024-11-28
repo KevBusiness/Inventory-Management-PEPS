@@ -36,6 +36,7 @@ async function main() {
     const createdAt = faker.date.recent({ days: 75 });
     const ticket = await db.ticket.create({
       data: {
+        revenue: 0,
         status: "Disponible",
         type: "Entregado",
         userId: users[faker.number.int({ min: 0, max: 1 })].id,
@@ -69,7 +70,6 @@ async function main() {
       data: {
         freshQuantity: amount,
         wiltedQuantity: 0,
-        Amount_sell: amountSell,
         price: faker.number.int({ min: 0, max: 100 }),
         min_amount: faker.number.int(300),
         createdAt: createdAt,
@@ -89,7 +89,6 @@ async function main() {
       data: {
         freshQuantity: amount,
         wiltedQuantity: 0,
-        Amount_sell: amountSell,
         price: faker.number.int({ min: 0, max: 100 }),
         min_amount: faker.number.int(300),
         createdAt: createdAt,
@@ -109,7 +108,6 @@ async function main() {
       data: {
         freshQuantity: amount,
         wiltedQuantity: amount / 2,
-        Amount_sell: amountSell,
         price: faker.number.int({ min: 0, max: 100 }),
         min_amount: faker.number.int(300),
         createdAt: createdAt,

@@ -1,6 +1,7 @@
 import React from "react";
-import { Flower } from "lucide-react";
+import { Flower, Check, X } from "lucide-react";
 import { formatToMXN } from "~/lib/utils";
+import { UpdatedFlowers } from "~/lib/types";
 
 interface FlowerDetails {
   flowerCategoryId: number;
@@ -8,6 +9,11 @@ interface FlowerDetails {
   freshQuantity: number;
   wiltedQuantity: number;
   price: number;
+}
+
+interface NotebookProps {
+  flowers: FlowerDetails[] | UpdatedFlowers[];
+  type: "ticket" | "sale";
 }
 
 const FlowerEntry: React.FC<FlowerDetails> = ({
@@ -25,11 +31,28 @@ const FlowerEntry: React.FC<FlowerDetails> = ({
   </div>
 );
 
-export default function FlowerNotebook({
-  flowers,
-}: {
-  flowers: FlowerDetails[];
-}) {
+const FlowerEntrySale: React.FC<UpdatedFlowers> = ({
+  name,
+  currentAmount,
+  type,
+  price,
+  value,
+}) => (
+  <div className="mb-6 flex items-center">
+    <Flower className="mr-2 h-5 w-5 text-pink-500" />
+    <span className="flex-1">{name}</span>
+    <span className="flex-1 text-center">
+      {type === "fresh" ? "Frescas" : "Marchitas"}
+    </span>
+    <span className="flex-1 text-center">{value}</span>
+    <span className="flex-1 text-right">{formatToMXN(value * price)}</span>
+    <span className="flex-1 flex justify-center">
+      {currentAmount - value === 0 ? <Check /> : <X />}
+    </span>
+  </div>
+);
+
+export default function FlowerNotebook({ flowers, type }: NotebookProps) {
   return (
     <div className="flex items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-[800px] bg-white p-8 rounded-lg shadow-lg transform rotate-1 overflow-hidden relative">
@@ -39,20 +62,36 @@ export default function FlowerNotebook({
             className="text-3xl font-bold mb-8 text-center font-handwriting text-blue-800"
             style={{ lineHeight: "1.5rem", paddingTop: "0.75rem" }}
           >
-            Resumen
+            {type === "ticket" ? "Resumen de entrada" : "Resumen de Venta"}
           </h1>
           <div
             className="mb-6 font-semibold flex font-handwriting text-lg"
             style={{ lineHeight: "1.5rem" }}
           >
-            <span className="flex-1">Nombre</span>
-            <span className="flex-1 text-center">Frescas</span>
-            <span className="flex-1 text-center">Marchitas</span>
-            <span className="flex-1 text-right">Precio</span>
+            {type === "ticket" ? (
+              <>
+                <span className="flex-1">Nombre</span>
+                <span className="flex-1 text-center">Frescas</span>
+                <span className="flex-1 text-center">Marchitas</span>
+                <span className="flex-1 text-right">Precio</span>
+              </>
+            ) : (
+              <>
+                <span className="flex-1">Nombre</span>
+                <span className="flex-1 text-center">Calidad</span>
+                <span className="flex-1 text-center">Unidades vendidas</span>
+                <span className="flex-1 text-right">Total</span>
+                <span className="flex-1 text-right">Liquidando</span>
+              </>
+            )}
           </div>
           {flowers.map((flower, index) => (
             <div key={index} style={{ lineHeight: "1.5rem" }}>
-              <FlowerEntry {...flower} />
+              {type === "ticket" ? (
+                <FlowerEntry {...(flower as FlowerDetails)} />
+              ) : (
+                <FlowerEntrySale {...(flower as UpdatedFlowers)} />
+              )}
             </div>
           ))}
           <div className="flex justify-end" style={{ lineHeight: "1.5rem" }}>
@@ -63,8 +102,12 @@ export default function FlowerNotebook({
                   flowers.reduce(
                     (acc, flower) =>
                       acc +
-                      (flower.freshQuantity + flower.wiltedQuantity) *
-                        flower.price,
+                      (type === "ticket"
+                        ? ((flower as FlowerDetails).freshQuantity +
+                            (flower as FlowerDetails).wiltedQuantity) *
+                          (flower as FlowerDetails).price
+                        : (flower as UpdatedFlowers).value *
+                          (flower as UpdatedFlowers).price),
                     0
                   )
                 )}
