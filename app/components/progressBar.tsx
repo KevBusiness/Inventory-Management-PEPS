@@ -1,7 +1,4 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { BsCardChecklist } from "react-icons/bs";
-import { GiFlowerPot } from "react-icons/gi";
-import { TbInvoice } from "react-icons/tb";
 import { cn } from "~/lib/utils";
 import { Button } from "./ui/button";
 import { useLocation, useSearchParams } from "@remix-run/react";
@@ -19,8 +16,8 @@ export function ProgressBar({ currentStep = 0, steps }: ProgressBarProps) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const path = location.pathname.split("/")[2];
-  const currentLote =
-    searchParams.get("currentLote") || searchParams.get("ticket");
+  const selectedTicket =
+    searchParams.get("current") || searchParams.get("ticket");
   return (
     <aside className="h-full w-56 bg-white rounded-r-lg px-5 pt-1 flex flex-col justify-between border-t shadow-md">
       <div className="space-y-3">
@@ -54,9 +51,9 @@ export function ProgressBar({ currentStep = 0, steps }: ProgressBarProps) {
             transition={{ duration: 0.5 }}
           >
             <p className="text-sm text-center mt-1">Lote seleccionado</p>
-            {currentLote ? (
+            {selectedTicket ? (
               <span className="text-[120px] font-bold mx-auto block w-fit">
-                <NumberFlow value={Number(currentLote)} />
+                <NumberFlow value={Number(selectedTicket)} />
               </span>
             ) : (
               <span className="block my-5 mx-auto w-fit text-md font-semibold">
@@ -65,9 +62,12 @@ export function ProgressBar({ currentStep = 0, steps }: ProgressBarProps) {
             )}
             <Button
               className="h-12 w-full my-0"
-              disabled={Number(currentLote) > 0 ? false : true}
+              disabled={Number(selectedTicket) > 0 ? false : true}
               onClick={() => {
-                setSearchParams({ step: "1", ticket: currentLote!.toString() });
+                setSearchParams({
+                  step: "1",
+                  ticket: selectedTicket!.toString(),
+                });
               }}
             >
               Continuar

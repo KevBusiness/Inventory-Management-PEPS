@@ -188,7 +188,6 @@ const headerFields = [
 // TODO: add drag and drop after selecting flowers
 export default function NewTicket() {
   const submit = useSubmit();
-  const navigate = useNavigate();
   const { message, flowers } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedFlowers, setSelectedFlowers] = useState<SelectedFlower[]>([]);
@@ -295,13 +294,6 @@ export default function NewTicket() {
     if (message) {
       toast({ title: "Exito", description: message });
     }
-    // TODO: add a check for the selected flowers
-    // if (
-    //   (parseInt(step!) > 0 && selectedFlowers.length === 0) ||
-    //   flowersFields.length === 0
-    // ) {
-    //   navigate("/new/ticket");
-    // }
   }, [message]);
 
   return (

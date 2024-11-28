@@ -24,7 +24,7 @@ import { BsCardChecklist } from "react-icons/bs";
 import { GiFlowerPot } from "react-icons/gi";
 import { LiaSaveSolid } from "react-icons/lia";
 import { TbInvoice } from "react-icons/tb";
-import { flow } from "lodash";
+import { flow, sample } from "lodash";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 
 const steps = [
@@ -53,6 +53,9 @@ export const meta: MetaFunction = () => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
   const session = await getSession(request.headers.get("Cookie"));
   const formData = await request.formData();
   const ticket = formData.get("ticket");
@@ -75,7 +78,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       },
     });
   });
-  await db.ticket.update({
+  const ticketUpdated = await db.ticket.update({
     where: {
       id: Number(ticket),
     },
@@ -87,6 +90,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           0
         ),
       },
+    },
+  });
+  await db.sale.create({
+    data: {
+      userId: user?.id!,
+      ticketId: ticketUpdated.id,
+      updatedFlowers: JSON.stringify(flowers),
+      total: flowers.reduce(
+        (acc: number, flower: UpdatedFlowers) =>
+          acc + flower.price * flower.value,
+        0
+      ),
     },
   });
   session.flash("success", "La venta ha sido añadida correctamente.");
@@ -155,7 +170,7 @@ export default function NewSale() {
   const [searchParams, setSearchParams] = useSearchParams();
   const step = searchParams.get("step");
   const searchTerm = searchParams.get("search");
-
+  const selectedTicket = searchParams.get("current");
   if (!fetchData) {
     return <div>Something went wrong</div>;
   }
@@ -215,7 +230,11 @@ export default function NewSale() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <TicketCard index={index} ticket={ticket} />
+                <TicketCard
+                  index={index}
+                  ticket={ticket}
+                  onFocus={selectedTicket}
+                />
               </motion.div>
             ))}
           </AnimatePresence>

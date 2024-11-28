@@ -1,22 +1,13 @@
+import { useState } from "react";
+import { Form, useSearchParams, useNavigation } from "@remix-run/react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import type { Ticket } from "@prisma/client";
+import { cn, formatToDate, formatToMXN } from "~/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import type { Ticket } from "@prisma/client";
-import { formatToDate, formatToMXN } from "~/lib/utils";
-import { E } from "node_modules/@faker-js/faker/dist/airline-BLb3y-7w";
-import { useSearchParams } from "@remix-run/react";
 
-// Fix Colors
 const statusColors = {
   Disponible:
     "bg-green-100 hover:bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -36,18 +27,30 @@ interface TicketFetchProps extends Ticket {
 interface TicketCardProps {
   index: number;
   ticket: TicketFetchProps;
+  onFocus: string | null;
 }
 
-export default function ticketCard({ ticket, index }: TicketCardProps) {
+export default function ticketCard({
+  ticket,
+  index,
+  onFocus,
+}: TicketCardProps) {
+  const navigation = useNavigation();
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [_, setSearchParams] = useSearchParams();
   return (
     <Card
-      className="overflow-hidden transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+      // TODO: Check the color of the border
+      className={cn(
+        onFocus === ticket.id.toString()
+          ? "border-neutral-500 border ring-2 ring-neutral-300"
+          : "",
+        "overflow-hidden transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+      )}
       onClick={() => {
         setSearchParams((prev) => ({
           ...Object.fromEntries(prev),
-          currentLote: ticket.id.toString(),
+          current: ticket.id.toString(),
         }));
       }}
     >
@@ -134,6 +137,20 @@ export default function ticketCard({ ticket, index }: TicketCardProps) {
                       {formatToDate(ticket.createdAt.toString())}
                     </li>
                   </ul>
+                  <Form method="DELETE">
+                    <input type="hidden" name="ticket" value={ticket.id} />
+                    <Button
+                      type="submit"
+                      className="h-10 w-full mt-2"
+                      variant={"destructive"}
+                      disabled={
+                        navigation.state === "submitting" ||
+                        navigation.state === "loading"
+                      }
+                    >
+                      Eliminar
+                    </Button>
+                  </Form>
                 </div>
               </motion.div>
             )}

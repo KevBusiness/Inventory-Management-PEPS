@@ -1,11 +1,23 @@
 import db from "~/database/prisma.server";
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
+import {
+  Link,
+  useActionData,
+  useLoaderData,
+  useSearchParams,
+} from "@remix-run/react";
 import TicketCard from "~/components/ticket/ticket_card";
 import { Button } from "~/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
+import NumberFlow from "@number-flow/react";
 import { CiSearch } from "react-icons/ci";
 import { Input } from "~/components/ui/input";
+import { useEffect } from "react";
+import { toast } from "~/hooks/use-toast";
 
 export const meta: MetaFunction = () => {
   return [
@@ -15,6 +27,25 @@ export const meta: MetaFunction = () => {
       content: "Inventory management tickets panel.",
     },
   ];
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const formData = await request.formData();
+  if (request.method === "DELETE") {
+    const ticketId = formData.get("ticket");
+    await db.ticket
+      .delete({
+        where: {
+          id: parseInt(ticketId as string),
+        },
+      })
+      .catch((error) => {
+        console.log(error);
+        return { type: "error", message: "Error al eliminar el ticket." };
+      });
+    return { type: "success", message: "Ticket eliminado con exito." };
+  }
+  return null;
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -34,8 +65,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function TicketsMain() {
   const fetchData = useLoaderData<typeof loader>();
+  const alert = useActionData<typeof action>();
   const [searchParams, setSearchParams] = useSearchParams();
+
   const searchTerm = searchParams.get("search");
+  const selectedTicket = searchParams.get("current");
 
   const filteredTickets = Array.isArray(fetchData)
     ? fetchData.filter((ticket) =>
@@ -43,28 +77,42 @@ export default function TicketsMain() {
       )
     : [];
 
+  useEffect(() => {
+    if (alert?.type === "error") {
+      toast({
+        title: "Error",
+        description: alert.message,
+        variant: "destructive",
+      });
+    } else if (alert?.type === "success") {
+      toast({ title: "Exito", description: alert.message, variant: "default" });
+    }
+  }, [alert]);
+
   return (
     <>
       <p className="mt-2 text-sm">Entradas del inventario.</p>
-      <div className="flex items-center gap-x-5 my-5">
-        <Button className="h-10">
-          <Link to="/new/ticket">Nuevo ticket</Link>
-        </Button>
-        <div className="relative">
-          <CiSearch
-            className="absolute top-[0.7rem] left-2 text-muted-foreground"
-            size={20}
-          />
-          <Input
-            className="h-10 w-64 bg-white pl-9 shadow-sm hover:shadow-md transition"
-            placeholder="Buscar por numero de lote..."
-            onChange={(e) => {
-              setSearchParams((prev) => ({
-                ...Object.fromEntries(prev),
-                search: e.target.value,
-              }));
-            }}
-          />
+      <div className="flex justify-between my-5">
+        <div className="flex items-center gap-x-5">
+          <Button className="h-10">
+            <Link to="/new/ticket">Nuevo ticket</Link>
+          </Button>
+          <div className="relative">
+            <CiSearch
+              className="absolute top-[0.7rem] left-2 text-muted-foreground"
+              size={20}
+            />
+            <Input
+              className="h-10 w-64 bg-white pl-9 shadow-sm hover:shadow-md transition"
+              placeholder="Buscar por numero de lote..."
+              onChange={(e) => {
+                setSearchParams((prev) => ({
+                  ...Object.fromEntries(prev),
+                  search: e.target.value,
+                }));
+              }}
+            />
+          </div>
         </div>
       </div>
       <motion.div
@@ -82,11 +130,45 @@ export default function TicketsMain() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <TicketCard index={index} ticket={ticket} />
+              <TicketCard
+                index={index}
+                ticket={ticket}
+                onFocus={selectedTicket}
+              />
             </motion.div>
           ))}
         </AnimatePresence>
       </motion.div>
+      {selectedTicket && (
+        <AnimatePresence>
+          <motion.div
+            className="flex items-center gap-x-5 fixed bottom-10 right-10 bg-black p-3 rounded-lg shadow-md"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <span className="text-white">
+              Ticket seleccionado:{" "}
+              {<NumberFlow value={Number(selectedTicket)} />}
+            </span>
+            <Button variant="secondary" type="button" asChild>
+              <Link to={`/tickets/${selectedTicket}`}>Ir</Link>
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setSearchParams((prev) => ({
+                  ...Object.fromEntries(prev),
+                  current: "",
+                }))
+              }
+            >
+              Limpiar
+            </Button>
+          </motion.div>
+        </AnimatePresence>
+      )}
     </>
   );
 }
