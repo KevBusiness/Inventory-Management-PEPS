@@ -77,7 +77,10 @@ export default function Inventory() {
             <TableCaption>Inventario PEPS.</TableCaption>
             <TableBody>
               {data.tickets.map((ticket) => (
-                <TableRow className="odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100">
+                <TableRow
+                  className="odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100"
+                  key={ticket.id}
+                >
                   <TableCell className="font-medium w-1/5">
                     {formatToDate(ticket.createdAt.toString())}
                   </TableCell>

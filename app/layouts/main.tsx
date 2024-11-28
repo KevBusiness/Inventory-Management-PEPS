@@ -12,6 +12,7 @@ import { Toaster } from "~/components/ui/toaster";
 import { cn } from "~/lib/utils";
 import { CiCalculator2 } from "react-icons/ci";
 import { BsBell } from "react-icons/bs";
+import { AnimatePresence, motion } from "framer-motion";
 
 // TODO: Update lodash import
 const { capitalize } = lodash;
@@ -65,7 +66,7 @@ export default function MainLayout({
         <aside
           className={cn(
             colors[0] === "lime"
-              ? "from-lime-200 to-lime-500"
+              ? "from-gray-200 to-gray-500"
               : "from-rose-200 to-rose-500",
             "flex flex-col justify-between w-56 py-5 bg-gradient-to-b "
           )}
@@ -75,24 +76,34 @@ export default function MainLayout({
               <h1 className="text-md">Carrillo F | Administrador</h1>
               <PiFlowerTulipDuotone size={30} />
             </div>
-            <Separator className="bg-lime-50 h-[2px]" />
+            <Separator className="bg-gray-50 h-[2px]" />
             <nav className="px-3 space-y-2">
-              {routes.map((route) => (
-                <Button
-                  key={route.path}
-                  asChild
-                  className="h-12 w-full bg-white"
-                  variant={"secondary"}
-                >
-                  <a
-                    href={route.path}
-                    className="flex justify-between items-center"
+              <AnimatePresence>
+                {routes.map((route, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
                   >
-                    <span>{route.label}</span>
-                    {route.icon}
-                  </a>
-                </Button>
-              ))}
+                    <Button
+                      key={route.path}
+                      asChild
+                      className="h-12 w-full bg-white"
+                      variant={"secondary"}
+                    >
+                      <a
+                        href={route.path}
+                        className="flex justify-between items-center"
+                      >
+                        <span>{route.label}</span>
+                        {route.icon}
+                      </a>
+                    </Button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </nav>
           </div>
           <div className="px-3">
