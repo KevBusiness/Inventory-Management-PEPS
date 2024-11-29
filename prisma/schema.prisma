@@ -57,7 +57,7 @@ model Flower {
   wilted_sale Float @default(0)
   price Float
   min_amount Int?
-  total_sales Float @default(0)
+  revenue Float @default(0)
   tickets Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   flowerCategory FlowerCategory @relation(fields: [flowerCategoryId], references: [id], onDelete: Cascade)
   flowerCategoryId Int

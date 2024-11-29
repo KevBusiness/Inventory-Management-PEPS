@@ -57,6 +57,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
           freshQuantity: true,
           wilted_sale: true,
           wiltedQuantity: true,
+          flowerCategory: {
+            select: {
+              name: true,
+            },
+          },
         },
       },
     },

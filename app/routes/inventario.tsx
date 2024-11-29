@@ -1,5 +1,5 @@
 import { useLoaderData } from "@remix-run/react";
-import { LoaderFunctionArgs } from "@remix-run/node";
+import { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import db from "~/database/prisma.server";
 import { authenticator } from "~/services/auth.server";
 import MainLayout from "~/layouts/main";
@@ -13,6 +13,16 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { formatToDate } from "~/lib/utils";
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "Inventario PEPS | Inventory Management" },
+    {
+      name: "description",
+      content: "Inventory management dashboard panel.",
+    },
+  ];
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {

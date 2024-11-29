@@ -21,6 +21,9 @@ interface TicketFetchProps extends Ticket {
     freshQuantity: number;
     wilted_sale: number;
     wiltedQuantity: number;
+    flowerCategory: {
+      name: string;
+    };
   }[];
 }
 
@@ -129,9 +132,14 @@ export default function ticketCard({
                     Detalles adicionales del lote:
                   </p>
                   <ul className="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    <li>Proveedor: Flores del Campo S.A.</li>
-                    <li>Tipo de flor: Rosas</li>
-                    <li>Calidad: Premium</li>
+                    <span className="font-semibold">Tipos de flores:</span>
+                    <ul className="grid grid-cols-2 my-2 gap-y-2">
+                      {ticket.flowers.map((flower, index) => (
+                        <li key={index} className="text-xs">
+                          {flower.flowerCategory.name}
+                        </li>
+                      ))}
+                    </ul>
                     <li>
                       Fecha de recepción:{" "}
                       {formatToDate(ticket.createdAt.toString())}
@@ -143,10 +151,7 @@ export default function ticketCard({
                       type="submit"
                       className="h-10 w-full mt-2"
                       variant={"destructive"}
-                      disabled={
-                        navigation.state === "submitting" ||
-                        navigation.state === "loading"
-                      }
+                      disabled={navigation.state === "submitting"}
                     >
                       Eliminar
                     </Button>
