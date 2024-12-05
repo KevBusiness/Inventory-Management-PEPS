@@ -9,21 +9,20 @@ import { Button } from "../ui/button";
 import { Minus, Plus } from "lucide-react";
 
 const statusColors = {
-  Disponible:
+  Pedido:
     "bg-green-100 hover:bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  Vendido: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  Bajo: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  Disponible:
+    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  Agotado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
 interface TicketFetchProps extends Ticket {
   flowers: {
-    fresh_sale: number;
-    freshQuantity: number;
-    wilted_sale: number;
-    wiltedQuantity: number;
-    flowerCategory: {
-      name: string;
-    };
+    currentStockFresh: number;
+    currentwiltedFlowers: number | null;
+  }[];
+  sales: {
+    total: number;
   }[];
 }
 
@@ -63,7 +62,8 @@ export default function ticketCard({
         </CardTitle>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {/* TODO: ADD TICKET.REVENUE */}
-          Venta Acumulada: {formatToMXN(ticket.revenue)}
+          Venta Acumulada:{" "}
+          {formatToMXN(ticket.sales.reduce((acc, sale) => acc + sale.total, 0))}
         </p>
       </CardHeader>
       <CardContent>
@@ -84,8 +84,7 @@ export default function ticketCard({
               </p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                 {ticket.flowers.reduce(
-                  (acc, flower) =>
-                    acc + flower.freshQuantity - flower.fresh_sale,
+                  (acc, flower) => acc + flower.currentStockFresh,
                   0
                 )}
               </p>
@@ -96,8 +95,7 @@ export default function ticketCard({
               </p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                 {ticket.flowers.reduce(
-                  (acc, flower) =>
-                    acc + flower.wiltedQuantity - flower.wilted_sale,
+                  (acc, flower) => acc + (flower.currentwiltedFlowers || 0),
                   0
                 )}
               </p>
@@ -132,17 +130,12 @@ export default function ticketCard({
                     Detalles adicionales del lote:
                   </p>
                   <ul className="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span className="font-semibold">Tipos de flores:</span>
-                    <ul className="grid grid-cols-2 my-2 gap-y-2">
-                      {ticket.flowers.map((flower, index) => (
-                        <li key={index} className="text-xs">
-                          {flower.flowerCategory.name}
-                        </li>
-                      ))}
-                    </ul>
+                    <li>
+                      Total de ingreso al almacen: {formatToMXN(ticket.total)}
+                    </li>
                     <li>
                       Fecha de recepción:{" "}
-                      {formatToDate(ticket.createdAt.toString())}
+                      {formatToDate(ticket.orderDate.toString())}
                     </li>
                   </ul>
                   <Form method="DELETE">

@@ -1,5 +1,11 @@
 import { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { Form, useLoaderData, useNavigate, Link } from "@remix-run/react";
+import {
+  Form,
+  useLoaderData,
+  useNavigate,
+  Link,
+  useSearchParams,
+} from "@remix-run/react";
 import db from "~/database/prisma.server";
 import { Button } from "~/components/ui/button";
 import {
@@ -12,17 +18,17 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { cn, formatToDate, formatToMXN } from "~/lib/utils";
-import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
 import { Search } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-export const meta: MetaFunction = () => {
+export const meta: MetaFunction = ({ params }) => {
+  const id = params.id;
   return [
-    { title: "Tickets | Inventory Management" },
+    { title: `Lote ${id} | Inventory Management` },
     {
       name: "description",
-      content: "Inventory management tickets panel.",
+      content: "Inventory management ticket panel of table.",
     },
   ];
 };
@@ -40,11 +46,13 @@ export async function loader({ params }: LoaderFunctionArgs) {
         },
         flowers: {
           include: {
-            flowerCategory: {
+            flowerBox: {
               select: {
                 name: true,
+                min: true,
               },
             },
+            saleTransactions: true,
           },
         },
       },
@@ -57,7 +65,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 export default function ShowTicket() {
   const ticket = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-
+  const [searchParams, setSearchParams] = useSearchParams();
   if (!ticket) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -69,22 +77,29 @@ export default function ShowTicket() {
     );
   }
 
+  const search = searchParams.get("search")?.toLowerCase() || "";
+
+  const filteredFlowers = ticket.flowers.filter((flower) =>
+    flower.flowerBox.name.toLowerCase().includes(search)
+  );
+
   return (
     <>
       <p className="mt-2 text-sm">
         Ultima actualizacion el dia {formatToDate(ticket.updatedAt.toString())}.
       </p>
       <div className="flex items-center gap-x-2 my-4">
-        <p className="text-sm">Inventario:</p>
-        <div className="h-3 w-3 rounded-full bg-green-400 animate-pulse ring-1 ring-green-200 border border-green-100"></div>
-        <p className="text-xs">Stock Pendiente</p>
-      </div>
-      <div className="flex items-center gap-x-2 my-4">
         <p className="text-sm">Estado:</p>
-        <p className="text-xs underline underline-offset-2">{ticket.fase}</p>
+        <p className="text-sm underline underline-offset-2 font-semibold">
+          {ticket.status}
+        </p>
       </div>
       <div className="flex items-center gap-x-5 my-5">
-        <Form className="relative" method="GET">
+        <Form
+          className="relative"
+          method="GET"
+          onSubmit={(e) => e.preventDefault()}
+        >
           <Button
             type="submit"
             className="absolute right-1 top-[2px]"
@@ -102,12 +117,15 @@ export default function ShowTicket() {
             placeholder="Buscar.."
             name="search"
             required
+            onChange={(e) => {
+              setSearchParams({ search: e.target.value });
+            }}
           />
         </Form>
         <Button
           className="h-10 w-28"
           onClick={() => {
-            null;
+            setSearchParams({ search: "" });
           }}
         >
           Limpiar
@@ -117,7 +135,7 @@ export default function ShowTicket() {
         <Table className="border-collapse">
           <TableCaption>
             Lista de inventario agregado el dia{" "}
-            {formatToDate(ticket.createdAt.toString())}.
+            {formatToDate(ticket.orderDate.toString())}.
           </TableCaption>
           <TableHeader className="h-full">
             <TableRow className="sticky top-0">
@@ -133,106 +151,100 @@ export default function ShowTicket() {
           </TableHeader>
           <AnimatePresence>
             <TableBody>
-              {ticket.flowers.map((flower, index) => (
-                <TableRow className="odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100">
-                  <motion.div
-                    key={flower.id}
+              {filteredFlowers.map((flower, index) => (
+                <TableRow
+                  className="odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100"
+                  key={index}
+                >
+                  {/* Mueve el motion.td directamente dentro de TableCell */}
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="font-medium">
-                      {flower.flowerCategory.name}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {flower.flowerBox.name}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="text-center">
-                      {flower.freshQuantity}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {flower.currentStockFresh}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="text-center">
-                      {flower.wiltedQuantity}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {flower.currentwiltedFlowers || 0}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="text-center">
-                      {flower.fresh_sale}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {flower.saleTransactions
+                      .filter((sale) => sale.quality === "Fresca")
+                      .reduce((acc, flower) => acc + flower.quantity, 0)}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="text-center">
-                      {flower.wilted_sale}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {flower.saleTransactions
+                      .filter((sale) => sale.quality === "Marchita")
+                      .reduce((acc, flower) => acc + flower.quantity, 0)}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="">
-                      {!flower.min_amount ? "N/A" : flower.min_amount}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {!flower.flowerBox.min ? "N/A" : flower.flowerBox.min}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="font-semibold">
-                      {formatToMXN(flower.price)}
-                    </TableCell>
-                  </motion.div>
-                  <motion.div
-                    key={flower.id}
+                    {formatToMXN(flower.current_price)}
+                  </motion.td>
+
+                  <motion.td
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="table-cell"
+                    className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    <TableCell className="text-center font-semibold">
-                      {formatToMXN(
-                        (flower.fresh_sale + flower.wilted_sale) * flower.price
-                      )}
-                    </TableCell>
-                  </motion.div>
+                    {formatToMXN(
+                      flower.saleTransactions.reduce(
+                        (acc, flower) => acc + flower.quantity * flower.price,
+                        0
+                      )
+                    )}
+                  </motion.td>
                 </TableRow>
               ))}
             </TableBody>

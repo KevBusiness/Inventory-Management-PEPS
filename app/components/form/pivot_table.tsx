@@ -1,4 +1,4 @@
-import type { Ticket, Flower } from "@prisma/client";
+import type { Ticket, Flower, saleTransaction } from "@prisma/client";
 import { AnimatePresence, motion } from "framer-motion";
 import React from "react";
 import InputCustom from "./input";
@@ -8,8 +8,9 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
 interface FlowerProps extends Flower {
-  flowerCategory: {
+  flowerBox: {
     name: string;
+    currentWiltedPrice: number | null;
   };
 }
 
@@ -67,12 +68,10 @@ export default function PivotTable({
                     (
                       {
                         id,
-                        wiltedQuantity,
-                        wilted_sale,
-                        freshQuantity,
-                        fresh_sale,
-                        flowerCategory: { name },
-                        price,
+                        currentStockFresh,
+                        current_price,
+                        currentwiltedFlowers,
+                        flowerBox: { name, currentWiltedPrice },
                       },
                       index
                     ) => (
@@ -86,46 +85,37 @@ export default function PivotTable({
                       >
                         <div className="w-60">
                           <label
-                            htmlFor={`flower-${id}-${
-                              freshQuantity - fresh_sale
-                            }-${name}-fresh-${price}`}
+                            htmlFor={`flower-${id}-${currentStockFresh}-${name}-fresh-${current_price}`}
                             className="text-md text-neutral-900 font-semibold hover:cursor-pointer"
                           >
                             {name}
                           </label>
                         </div>
                         <div className="w-60 pl-10">
-                          <p>{freshQuantity - fresh_sale}</p>
+                          <p>{currentStockFresh}</p>
                         </div>
                         <div className="w-60 pl-16">
-                          <p>{wiltedQuantity - wilted_sale}</p>
+                          <p>{currentwiltedFlowers || 0}</p>
                         </div>
                         <div className="w-60">
                           <Input
-                            id={`flower-${id}-${
-                              freshQuantity - fresh_sale
-                            }-${name}-fresh-${price}`}
-                            name={`flower-${id}-${
-                              freshQuantity - fresh_sale
-                            }-${name}-fresh-${price}`}
+                            id={`flower-${id}-${currentStockFresh}-${name}-fresh-${current_price}`}
+                            name={`flower-${id}-${currentStockFresh}-${name}-fresh-${current_price}`}
                             className="w-36 h-10 font-light placeholder-shown:valid:border-neutral-200 focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500 focus:valid:ring-1 focus:valid:ring-blue-500 valid:border-blue-500"
                             placeholder={formatToMXN(0).toString()}
-                            max={freshQuantity - fresh_sale}
+                            max={currentStockFresh}
                             min={0}
                             type="number"
                           />
                         </div>
                         <div className="w-60">
                           <Input
-                            id={`flower-${id}-${
-                              freshQuantity - fresh_sale
-                            }-${name}-whithered-${price}`}
-                            name={`flower-${id}-${
-                              freshQuantity - fresh_sale
-                            }-${name}-whithered-${price}`}
+                            name={`flower-${id}-${currentStockFresh}-${name}-wilted-${
+                              currentWiltedPrice || 0
+                            }`}
                             className="w-36 h-10 font-light placeholder-shown:valid:border-neutral-200 focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500 focus:valid:ring-1 focus:valid:ring-blue-500 valid:border-blue-500"
                             placeholder={formatToMXN(0).toString()}
-                            max={wiltedQuantity - wilted_sale}
+                            max={currentwiltedFlowers || 0}
                             min={0}
                             type="number"
                           />
@@ -181,21 +171,6 @@ export default function PivotTable({
                         item.id as number,
                         item.name as string,
                         "fresh"
-                      )
-                    }
-                  />
-                  <InputCustom
-                    color="amber"
-                    type="number"
-                    width="w-56"
-                    placeholder="0"
-                    onChange={(e) =>
-                      handleAmount &&
-                      handleAmount(
-                        e,
-                        item.id as number,
-                        item.name as string,
-                        "whithered"
                       )
                     }
                   />

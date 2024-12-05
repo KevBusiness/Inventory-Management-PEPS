@@ -53,15 +53,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     include: {
       flowers: {
         select: {
-          fresh_sale: true,
-          freshQuantity: true,
-          wilted_sale: true,
-          wiltedQuantity: true,
-          flowerCategory: {
-            select: {
-              name: true,
-            },
-          },
+          currentStockFresh: true,
+          currentwiltedFlowers: true,
+        },
+      },
+      sales: {
+        select: {
+          total: true,
         },
       },
     },
@@ -100,7 +98,7 @@ export default function TicketsMain() {
       <div className="flex justify-between my-5">
         <div className="flex items-center gap-x-5">
           <Button className="h-10">
-            <Link to="/new/ticket">Nuevo ticket</Link>
+            <Link to="/new/ticket">Nuevo Pedido</Link>
           </Button>
           <div className="relative">
             <CiSearch

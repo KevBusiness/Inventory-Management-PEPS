@@ -3,13 +3,12 @@ import { Flower, Check, X } from "lucide-react";
 import { formatToMXN } from "~/lib/utils";
 import { UpdatedFlowers } from "~/lib/types";
 
-interface FlowerDetails {
-  flowerCategoryId: number;
+type FlowerDetails = {
+  flowerBoxId: number;
   name: string;
-  freshQuantity: number;
-  wiltedQuantity: number;
+  currentStockFresh: number;
   price: number;
-}
+};
 
 interface NotebookProps {
   flowers: FlowerDetails[] | UpdatedFlowers[];
@@ -18,15 +17,13 @@ interface NotebookProps {
 
 const FlowerEntry: React.FC<FlowerDetails> = ({
   name,
-  freshQuantity,
-  wiltedQuantity,
+  currentStockFresh,
   price,
 }) => (
   <div className="mb-6 flex items-center">
     <Flower className="mr-2 h-5 w-5 text-pink-500" />
     <span className="flex-1">{name}</span>
-    <span className="flex-1 text-center">{freshQuantity}</span>
-    <span className="flex-1 text-center">{wiltedQuantity}</span>
+    <span className="flex-1 text-center">{currentStockFresh}</span>
     <span className="flex-1 text-right">{formatToMXN(price)}</span>
   </div>
 );
@@ -71,8 +68,7 @@ export default function FlowerNotebook({ flowers, type }: NotebookProps) {
             {type === "ticket" ? (
               <>
                 <span className="flex-1">Nombre</span>
-                <span className="flex-1 text-center">Frescas</span>
-                <span className="flex-1 text-center">Marchitas</span>
+                <span className="flex-1 text-center">Cantidad</span>
                 <span className="flex-1 text-right">Precio</span>
               </>
             ) : (
@@ -103,8 +99,7 @@ export default function FlowerNotebook({ flowers, type }: NotebookProps) {
                     (acc, flower) =>
                       acc +
                       (type === "ticket"
-                        ? ((flower as FlowerDetails).freshQuantity +
-                            (flower as FlowerDetails).wiltedQuantity) *
+                        ? (flower as FlowerDetails).currentStockFresh *
                           (flower as FlowerDetails).price
                         : (flower as UpdatedFlowers).value *
                           (flower as UpdatedFlowers).price),

@@ -1,3 +1,4 @@
+import { Flower } from "@prisma/client";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Schema } from "zod";
@@ -30,3 +31,20 @@ export function formatToMXN(amount: number): string {
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export function GetPurchasedFlowers(data: Array<Flower>) {
+  return data.filter((flower) => flower.type !== "Venta");
+}
+
+export function GetFlowersSold(data: Array<Flower>) {
+  return data.filter((flower) => flower.type !== "Compra");
+}
+
+export function generateUniqueCode(): number {
+  const timestamp = Date.now();
+  const randomNum = Math.floor(Math.random() * 1000000);
+  const code = (timestamp + randomNum) % 1000000;
+  return code;
+}
+
+const uniqueCode = generateUniqueCode();

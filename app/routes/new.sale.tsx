@@ -24,8 +24,8 @@ import { BsCardChecklist } from "react-icons/bs";
 import { GiFlowerPot } from "react-icons/gi";
 import { LiaSaveSolid } from "react-icons/lia";
 import { TbInvoice } from "react-icons/tb";
-import { flow, sample } from "lodash";
 import { commitSession, getSession } from "~/services/alerts.session.server";
+import { F } from "node_modules/@faker-js/faker/dist/airline-BLb3y-7w";
 
 const steps = [
   { label: "Seleccionar Ticket", icon: <TbInvoice /> },
@@ -60,46 +60,45 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const ticket = formData.get("ticket");
   const flowers = JSON.parse(formData.get("flowers") as string);
+  const output = await db.output.create({
+    data: {
+      createdBy: user?.id!,
+      ticketId: Number(ticket!),
+      total: 0,
+    },
+  });
   flowers.forEach(async (flower: UpdatedFlowers) => {
-    await db.flower.update({
+    const flower_updated = await db.flower.update({
       where: {
         id: flower.id,
       },
       data: {
-        fresh_sale: {
-          increment: flower.type === "fresh" ? flower.value : 0,
+        currentStockFresh: {
+          decrement: flower.type === "fresh" ? flower.value : 0,
         },
-        wilted_sale: {
-          increment: flower.type === "wilted" ? flower.value : 0,
-        },
-        total_sales: {
-          increment: 1,
+        currentwiltedFlowers: {
+          decrement: flower.type === "wilted" ? flower.value : 0,
         },
       },
     });
-  });
-  const ticketUpdated = await db.ticket.update({
-    where: {
-      id: Number(ticket),
-    },
-    data: {
-      revenue: {
-        increment: flowers.reduce(
-          (acc: number, flower: UpdatedFlowers) =>
-            acc + flower.price * flower.value,
-          0
-        ),
+    await db.saleTransaction.create({
+      data: {
+        flowerId: flower_updated.id,
+        price: flower_updated.current_price,
+        quantity: flower.value,
+        quality: flower.type === "fresh" ? "Fresca" : "Marchita",
+        outputId: output.id,
       },
-    },
+    });
   });
-  await db.sale.create({
+  await db.output.update({
+    where: {
+      id: output.id,
+    },
     data: {
-      userId: user?.id!,
-      ticketId: ticketUpdated.id,
-      updatedFlowers: JSON.stringify(flowers),
       total: flowers.reduce(
         (acc: number, flower: UpdatedFlowers) =>
-          acc + flower.price * flower.value,
+          acc + flower.value * flower.price,
         0
       ),
     },
@@ -116,16 +115,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const step = url.searchParams.get("step");
+  const ticketSelect = url.searchParams.get("ticket");
   if (!step) {
     return await db.ticket
       .findMany({
+        where: {
+          status: "Disponible",
+        },
         include: {
           flowers: {
             select: {
-              fresh_sale: true,
-              freshQuantity: true,
-              wilted_sale: true,
-              wiltedQuantity: true,
+              currentStockFresh: true,
+              currentwiltedFlowers: true,
+            },
+          },
+          sales: {
+            select: {
+              total: true,
             },
           },
         },
@@ -134,18 +140,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         console.error(error);
         return null;
       });
-  } else if (step === "1") {
+  } else if (step === "1" && ticketSelect) {
     return await db.ticket
       .findUnique({
         where: {
-          id: Number(url.searchParams.get("ticket")!),
+          id: Number(ticketSelect),
         },
         include: {
           flowers: {
             include: {
-              flowerCategory: {
+              flowerBox: {
                 select: {
                   name: true,
+                  currentWiltedPrice: true,
                 },
               },
             },
@@ -171,6 +178,7 @@ export default function NewSale() {
   const step = searchParams.get("step");
   const searchTerm = searchParams.get("search");
   const selectedTicket = searchParams.get("current");
+
   if (!fetchData) {
     return <div>Something went wrong</div>;
   }

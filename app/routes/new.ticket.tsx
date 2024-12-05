@@ -31,7 +31,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { toast } from "~/hooks/use-toast";
-import { FlowerCategory } from "@prisma/client";
+import { FlowerBox } from "@prisma/client";
 import FlowerNotebook from "~/components/flower-notebook";
 import {
   Select,
@@ -42,6 +42,7 @@ import {
 } from "~/components/ui/select";
 import { authenticator } from "~/services/auth.server";
 import PivotTable from "~/components/form/pivot_table";
+import { generateUniqueCode } from "~/lib/utils";
 
 const steps = [
   { label: "Seleccionar Flores", icon: <TbInvoice /> },
@@ -62,10 +63,9 @@ export const meta: MetaFunction = () => {
 };
 
 type FlowersFields = {
-  flowerCategoryId: number;
+  flowerBoxId: number;
   name: string;
-  freshQuantity: number;
-  wiltedQuantity: number;
+  currentStockFresh: number;
   price: number;
 };
 
@@ -80,8 +80,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   switch (action) {
     case "action_make":
       flower_name = formData.get("flower_name") as string;
-      await db.flowerCategory.create({
-        data: { name: flower_name },
+      await db.flowerBox.create({
+        data: { name: flower_name, code: generateUniqueCode() },
       });
       session.flash("success", `${flower_name} ha sido añadido correctamente.`);
       return new Response(null, {
@@ -93,7 +93,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     case "action_delete":
       const flower_id = formData.get("flower_id") as string;
       flower_name = formData.get("flower_name") as string;
-      await db.flowerCategory.delete({
+      await db.flowerBox.delete({
         where: { id: parseInt(flower_id) },
       });
       session.flash("success", `${flower_name} fue eliminada correctamente.`);
@@ -105,29 +105,31 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     case "action_confirm":
       const flowersData = formData.get("flowers");
-      const status_type = formData.get("status_type") as "Pedido" | "Entregado";
+      const status_type = formData.get("status_type") as
+        | "Pedido"
+        | "Disponible"
+        | "Agotado";
       if (!flowersData) {
         throw new Error("Flowers data is missing");
       }
+      const flowers = JSON.parse(flowersData as string) as FlowersFields[];
       const ticketCreated = await db.ticket.create({
         data: {
-          type: status_type,
+          status: status_type,
           userId: Number(user?.id),
-          // TODO: ADD THE CORRECT STATUS
-          fase: status_type,
-          revenue: 0,
+          total: flowers.reduce(
+            (acc, flower) => acc + flower.price * flower.currentStockFresh,
+            0
+          ),
         },
       });
-      const flowers = JSON.parse(flowersData as string) as FlowersFields[];
       flowers.forEach(async (flower) => {
-        const { flowerCategoryId, freshQuantity, wiltedQuantity, price } =
-          flower;
+        const { flowerBoxId, currentStockFresh, price } = flower;
         await db.flower.create({
           data: {
-            flowerCategoryId,
-            freshQuantity,
-            wiltedQuantity,
-            price,
+            flowerBoxId,
+            current_price: price,
+            currentStockFresh,
             ticketId: ticketCreated.id,
           },
         });
@@ -145,7 +147,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 type FetchData = {
   message: string | undefined;
-  flowers: FlowerCategory[] | undefined;
+  flowers: FlowerBox[] | undefined;
 };
 
 export const loader = async ({
@@ -156,12 +158,19 @@ export const loader = async ({
   const url = new URL(request.url);
   const stepFound = url.searchParams.get("step");
   if (!stepFound) {
-    flowers = await db.flowerCategory.findMany().catch((error) => {
-      {
-        console.log(error);
-        return undefined;
-      }
-    });
+    flowers = await db.flowerBox
+      .findMany({
+        select: {
+          id: true,
+          name: true,
+        },
+      })
+      .catch((error) => {
+        {
+          console.log(error);
+          return undefined;
+        }
+      });
   }
   return Response.json(
     { message: session.get("success"), flowers },
@@ -178,12 +187,7 @@ type SelectedFlower = {
   name: string;
 };
 
-const headerFields = [
-  "Nombre",
-  "Cantidad Fresca",
-  "Cantidad Marchita",
-  "Precio Individual",
-];
+const headerFields = ["Nombre", "Cantidad", "Precio Individual"];
 
 // TODO: add drag and drop after selecting flowers
 export default function NewTicket() {
@@ -194,14 +198,14 @@ export default function NewTicket() {
   const [flowersFields, setFlowersFields] = useState<FlowersFields[]>([]);
   const step = searchParams.get("step");
 
-  const handleSave = (id: number, name: string) => {
+  const handleSave = (id: number, name?: string) => {
     if (selectedFlowers.find((flower) => flower.id === id)) {
       const newSelectedFlowers = selectedFlowers.filter(
         (flower) => flower.id !== id
       );
       setSelectedFlowers(newSelectedFlowers);
     } else {
-      setSelectedFlowers([...selectedFlowers, { id, name }]);
+      setSelectedFlowers([...selectedFlowers, { id, name: name! }]);
     }
   };
 
@@ -212,24 +216,15 @@ export default function NewTicket() {
     key: string
   ) => {
     const flowerFieldFound = flowersFields.find(
-      (flower) => flower.flowerCategoryId === id
+      (flower) => flower.flowerBoxId === id
     );
     if (flowerFieldFound) {
       switch (key) {
         case "fresh":
           setFlowersFields((prev) =>
             prev.map((flower) =>
-              flower.flowerCategoryId === id
-                ? { ...flower, freshQuantity: Number(e.target.value) }
-                : flower
-            )
-          );
-          break;
-        case "whithered":
-          setFlowersFields((prev) =>
-            prev.map((flower) =>
-              flower.flowerCategoryId === id
-                ? { ...flower, wiltedQuantity: Number(e.target.value) }
+              flower.flowerBoxId === id
+                ? { ...flower, currentStockFresh: Number(e.target.value) }
                 : flower
             )
           );
@@ -237,7 +232,7 @@ export default function NewTicket() {
         case "price":
           setFlowersFields((prev) =>
             prev.map((flower) =>
-              flower.flowerCategoryId === id
+              flower.flowerBoxId === id
                 ? { ...flower, price: Number(e.target.value) }
                 : flower
             )
@@ -253,21 +248,8 @@ export default function NewTicket() {
         setFlowersFields([
           ...flowersFields,
           {
-            flowerCategoryId: id,
-            freshQuantity: Number(e.target.value),
-            wiltedQuantity: 0,
-            price: 0,
-            name,
-          },
-        ]);
-        break;
-      case "whithered":
-        setFlowersFields([
-          ...flowersFields,
-          {
-            flowerCategoryId: id,
-            freshQuantity: 0,
-            wiltedQuantity: Number(e.target.value),
+            flowerBoxId: id,
+            currentStockFresh: Number(e.target.value),
             price: 0,
             name,
           },
@@ -277,9 +259,8 @@ export default function NewTicket() {
         setFlowersFields([
           ...flowersFields,
           {
-            flowerCategoryId: id,
-            freshQuantity: 0,
-            wiltedQuantity: 0,
+            flowerBoxId: id,
+            currentStockFresh: 0,
             price: Number(e.target.value),
             name,
           },
@@ -289,6 +270,10 @@ export default function NewTicket() {
         break;
     }
   };
+
+  const sortedFlowers = flowers?.filter(
+    (flower) => !selectedFlowers.some((select) => select.id === flower.id)
+  );
 
   useEffect(() => {
     if (message) {
@@ -332,8 +317,8 @@ export default function NewTicket() {
               Seleccione las flores que correspondan con su entrada.
             </span>
             <div className="space-y-3">
-              {flowers &&
-                flowers.map((flower) => (
+              {sortedFlowers &&
+                sortedFlowers.map((flower) => (
                   <div
                     key={flower.id}
                     className="h-10 flex justify-between border-b first:mt-4"
@@ -404,9 +389,23 @@ export default function NewTicket() {
               <>
                 <div className="max-h-[550px] h-[550px] overflow-y-auto">
                   {selectedFlowers.map((flower, index) => (
-                    <p className="text-sm border-b py-2" key={flower.id}>
-                      {index + 1}-{flower.name}
-                    </p>
+                    <div
+                      className="text-sm border-b py-2 flex items-center justify-between"
+                      key={flower.id}
+                    >
+                      <span>
+                        {index + 1}-{flower.name}
+                      </span>
+                      <Button
+                        size={"icon"}
+                        className="bg-transparent text-neutral-600 border-0 shadow-none hover:bg-red-500 hover:text-white hover:shadow-md"
+                        onClick={() => {
+                          handleSave(flower.id);
+                        }}
+                      >
+                        <BsTrash />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </>

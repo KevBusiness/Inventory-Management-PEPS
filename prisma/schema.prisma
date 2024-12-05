@@ -13,74 +13,159 @@ model User {
   name String?
   lastname String?
   password String
-  tickets Ticket[]
-  sales Sale[]
   role Role
+  tickets Ticket[]
+  outputs Output[]
+  adjustmentInventory InventoryAdjustment[]
+  notifications Notification[]
+  seenNotifications NotificationView[]
+  @@map("users")
 }
 
+enum Role {
+  Owner
+  Supervisor
+  Employed
+}
 
 model Ticket {
   id Int @id @default(autoincrement())
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId Int
-  type String
-  status TicketStatus @default(Disponible)
-  fase TicketFase @default(Pedido)
-  revenue Float
-  flowers Flower[]
-  sales Sale[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Sale {
-  id Int @id @default(autoincrement())
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  ticketId Int
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId Int
-  createdAt DateTime @default(now())
-  updatedFlowers String
   total Float
-}
-
-model FlowerCategory {
-  id Int @id @default(autoincrement())
-  name String
-  flowers Flower[]
-}
-model Flower {
-  id Int @id @default(autoincrement())
-  freshQuantity Int
-  wiltedQuantity Int
-  fresh_sale Float @default(0)
-  wilted_sale Float @default(0)
-  price Float
-  min_amount Int?
-  revenue Float @default(0)
-  tickets Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  flowerCategory FlowerCategory @relation(fields: [flowerCategoryId], references: [id], onDelete: Cascade)
-  flowerCategoryId Int
-  ticketId Int
-  createdAt DateTime @default(now())
+  status TicketStatus
+  orderDate DateTime @default(now())
+  deliveryDate DateTime?
   updatedAt DateTime @updatedAt
-}
-
-
-enum Role {
-  ADMIN
-  OWNER
+  sales Output[]
+  flowers Flower[]
+  userId Int
+  user User @relation(fields: [userId], references: [id])
+  @@map("tickets")
 }
 
 enum TicketStatus {
+  Pedido
   Disponible
-  Vendido
-  Bajo
+  Agotado
+}
+model Output {
+  id Int @id @default(autoincrement())
+  createdBy Int
+  ticketId Int
+  sales saleTransaction[]
+  total Float
+  user User @relation(fields: [createdBy], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  @@map("outputs")
 }
 
-enum TicketFase {
-  Pedido
-  Preparacion
-  Entregado
-  Cancelado
+model FlowerBox {
+  id Int @id @default(autoincrement())
+  name String
+  min Int?
+  code Int?
+  description String?
+  currentWiltedPrice Float?
+  flowers Flower[]
+  products Product[]
+  @@map("flowerBoxes")
+}
+model Location {
+  id Int @id @default(autoincrement())
+  name String
+  Flowers Flower[]
+  @@map("locations")
+}
+model Flower {
+  id Int @id @default(autoincrement())
+  current_price Float
+  purchase_price Float?
+  currentStockFresh Int
+  currentwiltedFlowers Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  flowerBoxId Int
+  locationId Int?
+  ticketId Int
+  flowerBox FlowerBox @relation(fields: [flowerBoxId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  saleTransactions saleTransaction[]
+  adjustmentInventory InventoryAdjustment[]
+  FlowerHistory FlowerHistory[]
+  @@map("flowers")
+}
+
+model saleTransaction {
+  id Int @id @default(autoincrement())
+  price Float
+  quantity Int
+  quality Quality
+  saleDate DateTime @default(now())
+  flowerId Int
+  outputId Int
+  productId Int?
+  flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
+  output Output @relation(fields: [outputId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+  @@map("sale_transactions")
+}
+
+enum Quality {
+  Fresca
+  Marchita
+}
+
+model Product {
+  id Int @id @default(autoincrement())
+  name String
+  quantity Int
+  price Float?
+  uses saleTransaction[]
+  to_use Int
+  Flowers FlowerBox @relation(fields: [to_use], references: [id], onDelete: Cascade)
+}
+
+model InventoryAdjustment {
+  id Int @id @default(autoincrement())
+  flowerId Int
+  createdBy Int
+  wiltedQuantity Int
+  freshQuantity Int
+  reason String
+  adjustmentDate DateTime @default(now())
+  flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  @@map("inventory_adjustments")
+}
+
+model FlowerHistory {
+  id Int @id @default(autoincrement())
+  price Float
+  wiltedQuantity Int
+  freshQuantity Int
+  reason String?
+  flowerId Int
+  flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
+  @@map("history_flowers")
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+  activity String
+  createdAt DateTime @default(now())
+  createdBy Int
+  seenBy NotificationView[]
+  user User @relation(fields: [createdBy], references: [id])
+  @@map("notifications")
+}
+
+model NotificationView {
+  id Int @id @default(autoincrement())
+  notificationId Int
+  userId Int
+  seenAt DateTime @default(now())
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+  @@unique([notificationId, userId])
+  @@map("notification_views")
 }

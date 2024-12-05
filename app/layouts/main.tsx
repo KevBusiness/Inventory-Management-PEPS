@@ -33,6 +33,11 @@ const routes = [
     icon: <MdOutlineInventory2 />,
   },
   {
+    path: "/existencias",
+    label: "Existencias",
+    icon: <MdOutlineInventory2 />,
+  },
+  {
     path: "/new/sale",
     label: "Nueva Venta",
     icon: <VscOutput />,
