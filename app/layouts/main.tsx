@@ -1,5 +1,5 @@
 import { useLocation, Outlet } from "@remix-run/react";
-import lodash from "lodash";
+import capitalize from "lodash/capitalize";
 import { User } from "@prisma/client";
 import { IoHomeOutline } from "react-icons/io5";
 import { VscOutput } from "react-icons/vsc";
@@ -14,8 +14,6 @@ import { CiCalculator2 } from "react-icons/ci";
 import { BsBell } from "react-icons/bs";
 import { AnimatePresence, motion } from "framer-motion";
 
-// TODO: Update lodash import
-const { capitalize } = lodash;
 const routes = [
   {
     path: "/dashboard",
@@ -53,7 +51,6 @@ const routes = [
   //   icon: <FaCloudUploadAlt />,
   // },
 ];
-// TODO: Update layout colors
 
 const colors = ["lime", "rose", "blue"];
 
@@ -70,16 +67,14 @@ export default function MainLayout({
       <div className="flex h-screen">
         <aside
           className={cn(
-            colors[0] === "lime"
-              ? "from-gray-200 to-gray-500"
-              : "from-rose-200 to-rose-500",
-            "flex flex-col justify-between w-56 py-5 bg-gradient-to-b "
+            "bg-blue-300",
+            "flex flex-col justify-between w-52 py-5"
           )}
         >
           <div className="space-y-5">
-            <div className="flex items-center justify-between px-5">
+            <div className="text-sky-950 flex items-center justify-between px-5">
               <h1 className="text-md">Carrillo F | Administrador</h1>
-              <PiFlowerTulipDuotone size={30} />
+              <PiFlowerTulipDuotone size={25} />
             </div>
             <Separator className="bg-gray-50 h-[2px]" />
             <nav className="px-3 space-y-2">
@@ -95,8 +90,8 @@ export default function MainLayout({
                     <Button
                       key={route.path}
                       asChild
-                      className="h-12 w-full bg-white"
-                      variant={"secondary"}
+                      className="h-10 w-full bg-white"
+                      variant={"ghost"}
                     >
                       <a
                         href={route.path}
@@ -112,7 +107,7 @@ export default function MainLayout({
             </nav>
           </div>
           <div className="px-3">
-            <Button asChild className="h-12 w-full">
+            <Button asChild className="h-10 w-full">
               <a href="/logout">Cerrar sesión</a>
             </Button>
           </div>
