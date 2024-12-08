@@ -94,41 +94,51 @@ export default function ShowTicket() {
           {ticket.status}
         </p>
       </div>
-      <div className="flex items-center gap-x-5 my-5">
-        <Form
-          className="relative"
-          method="GET"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <Button
-            type="submit"
-            className="absolute right-1 top-[2px]"
-            size={"icon"}
-            variant={"ghost"}
+      <div className="flex items-center justify-between my-5">
+        <div className="flex items-center gap-x-5">
+          <Form
+            className="relative"
+            method="GET"
+            onSubmit={(e) => e.preventDefault()}
           >
-            <Search size={24} />
-          </Button>
-          <Input
-            className="h-10 font-light pr-10
+            <Button
+              type="submit"
+              className="absolute right-1 top-[2px]"
+              size={"icon"}
+              variant={"ghost"}
+            >
+              <Search size={24} />
+            </Button>
+            <Input
+              className="h-10 font-light pr-10
           placeholder-shown:invalid:border-neutral-200
           focus:invalid:ring-red-500 focus:invalid:ring-1 invalid:border-red-500
             focus:valid:ring-1 focus:valid:ring-blue-500 valid:border-blue-500"
-            type="text"
-            placeholder="Buscar.."
-            name="search"
-            required
-            onChange={(e) => {
-              setSearchParams({ search: e.target.value });
+              type="text"
+              placeholder="Buscar.."
+              name="search"
+              required
+              onChange={(e) => {
+                setSearchParams({ search: e.target.value });
+              }}
+            />
+          </Form>
+          <Button
+            className="h-10 w-28"
+            onClick={() => {
+              setSearchParams({ search: "" });
             }}
-          />
-        </Form>
+          >
+            Limpiar
+          </Button>
+        </div>
         <Button
-          className="h-10 w-28"
-          onClick={() => {
-            setSearchParams({ search: "" });
-          }}
+          className="h-10"
+          variant={"link"}
+          type="button"
+          onClick={() => navigate(-1)}
         >
-          Limpiar
+          Volver a los tickets
         </Button>
       </div>
       <div className="mt-5">

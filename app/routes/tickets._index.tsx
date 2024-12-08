@@ -18,6 +18,13 @@ import { CiSearch } from "react-icons/ci";
 import { Input } from "~/components/ui/input";
 import { useEffect } from "react";
 import { toast } from "~/hooks/use-toast";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "~/components/ui/select";
 
 export const meta: MetaFunction = () => {
   return [
@@ -73,11 +80,21 @@ export default function TicketsMain() {
 
   const searchTerm = searchParams.get("search");
   const selectedTicket = searchParams.get("current");
+  const ticketStatus = searchParams.get("status"); // Estado seleccionado
 
+  // Filtrar los tickets por estado y número de lote
   const filteredTickets = Array.isArray(fetchData)
-    ? fetchData.filter((ticket) =>
-        ticket.id.toString().includes(searchTerm || "")
-      )
+    ? fetchData.filter((ticket) => {
+        // Filtramos por búsqueda de número de lote
+        const matchesSearch = ticket.id.toString().includes(searchTerm || "");
+
+        // Filtramos por estado de ticket
+        const matchesStatus = ticketStatus
+          ? ticket.status === ticketStatus
+          : true; // Si no hay filtro de estado, pasa todos los tickets
+
+        return matchesSearch && matchesStatus;
+      })
     : [];
 
   useEffect(() => {
@@ -115,6 +132,26 @@ export default function TicketsMain() {
                 }));
               }}
             />
+          </div>
+          {/* Filtro de estado */}
+          <div>
+            <Select
+              onValueChange={(value) => {
+                setSearchParams({
+                  ...Object.fromEntries(searchParams),
+                  status: value,
+                });
+              }}
+            >
+              <SelectTrigger className="h-10 w-48 bg-white shadow-sm hover:shadow-md transition">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pedido">Pedido</SelectItem>
+                <SelectItem value="Disponible">Disponible</SelectItem>
+                <SelectItem value="Agotado">Agotado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

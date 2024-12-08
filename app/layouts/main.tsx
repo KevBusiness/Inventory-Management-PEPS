@@ -1,4 +1,9 @@
-import { useLocation, Outlet } from "@remix-run/react";
+import {
+  useLocation,
+  Outlet,
+  useSearchParams,
+  useParams,
+} from "@remix-run/react";
 import capitalize from "lodash/capitalize";
 import { User } from "@prisma/client";
 import { IoHomeOutline } from "react-icons/io5";
@@ -13,6 +18,8 @@ import { cn } from "~/lib/utils";
 import { CiCalculator2 } from "react-icons/ci";
 import { BsBell } from "react-icons/bs";
 import { AnimatePresence, motion } from "framer-motion";
+import NumberFlow from "@number-flow/react";
+import { BsClipboardCheck, BsBoxes } from "react-icons/bs";
 
 const routes = [
   {
@@ -33,12 +40,17 @@ const routes = [
   {
     path: "/existencias",
     label: "Existencias",
-    icon: <MdOutlineInventory2 />,
+    icon: <BsBoxes />,
   },
   {
     path: "/new/sale",
     label: "Nueva Venta",
     icon: <VscOutput />,
+  },
+  {
+    path: "/procesar",
+    label: "Procesar Pedido",
+    icon: <BsClipboardCheck />,
   },
   {
     path: "/calculadora",
@@ -62,21 +74,23 @@ export default function MainLayout({
   user: User;
 }) {
   const location = useLocation();
+  const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedTicket = searchParams.get("current") || id;
   return (
     <main>
       <div className="flex h-screen">
         <aside
           className={cn(
-            "bg-blue-300",
-            "flex flex-col justify-between w-52 py-5"
+            null,
+            "flex flex-col justify-between w-52 py-5 border-r"
           )}
         >
           <div className="space-y-5">
-            <div className="text-sky-950 flex items-center justify-between px-5">
+            <div className="text-sky-950 flex items-center justify-between px-5 border-b-2 pb-3">
               <h1 className="text-md">Carrillo F | Administrador</h1>
               <PiFlowerTulipDuotone size={25} />
             </div>
-            <Separator className="bg-gray-50 h-[2px]" />
             <nav className="px-3 space-y-2">
               <AnimatePresence>
                 {routes.map((route, index) => (
@@ -90,7 +104,13 @@ export default function MainLayout({
                     <Button
                       key={route.path}
                       asChild
-                      className="h-10 w-full bg-white"
+                      className={cn(
+                        location.pathname.split("/")[1] ===
+                          route.path.split("/")[1]
+                          ? "bg-blue-500 text-white hover:bg-blue-600 hover:text-white"
+                          : null,
+                        "w-full h-10"
+                      )}
                       variant={"ghost"}
                     >
                       <a
@@ -104,9 +124,32 @@ export default function MainLayout({
                   </motion.div>
                 ))}
               </AnimatePresence>
+              <AnimatePresence>
+                {location.pathname.split("/")[1].includes("tickets") &&
+                selectedTicket ? (
+                  <motion.div
+                    className="border-t h-fit py-3"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <p className="text-sm text-center">Lote seleccionado</p>
+                    {selectedTicket ? (
+                      <span className="text-[120px] font-bold mx-auto block w-fit">
+                        <NumberFlow value={Number(selectedTicket)} />
+                      </span>
+                    ) : (
+                      <span className="block my-5 mx-auto w-fit text-md font-semibold">
+                        Sin especificar
+                      </span>
+                    )}
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </nav>
           </div>
-          <div className="px-3">
+          <div className="px-3 pt-5 border-t">
             <Button asChild className="h-10 w-full">
               <a href="/logout">Cerrar sesión</a>
             </Button>

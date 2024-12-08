@@ -53,6 +53,7 @@ model Output {
   ticketId Int
   sales saleTransaction[]
   total Float
+  createdAt DateTime @default(now())
   user User @relation(fields: [createdBy], references: [id])
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   @@map("outputs")

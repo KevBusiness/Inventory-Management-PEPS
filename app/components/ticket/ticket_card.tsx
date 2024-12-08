@@ -10,9 +10,9 @@ import { Minus, Plus } from "lucide-react";
 
 const statusColors = {
   Pedido:
-    "bg-green-100 hover:bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    "bg-amber-100 hover:bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
   Disponible:
-    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    "bg-green-100 hover:bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   Agotado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
@@ -129,13 +129,30 @@ export default function ticketCard({
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Detalles adicionales del lote:
                   </p>
-                  <ul className="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  <ul className="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-2">
                     <li>
-                      Total de ingreso al almacen: {formatToMXN(ticket.total)}
+                      Total de ingreso al almacen:{" "}
+                      <span className="font-semibold">
+                        {formatToMXN(ticket.total)}
+                      </span>
                     </li>
                     <li>
-                      Fecha de recepción:{" "}
-                      {formatToDate(ticket.orderDate.toString())}
+                      Fecha de orden:{" "}
+                      <span className="font-semibold">
+                        {formatToDate(ticket.orderDate.toString())}
+                      </span>
+                    </li>
+                    <li>
+                      Fecha de recepcion:{" "}
+                      {ticket.deliveryDate ? (
+                        <span className="font-semibold">
+                          {formatToDate(ticket.deliveryDate.toString())}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-red-400">
+                          Aun no es procesada.
+                        </span>
+                      )}
                     </li>
                   </ul>
                   <Form method="DELETE">
