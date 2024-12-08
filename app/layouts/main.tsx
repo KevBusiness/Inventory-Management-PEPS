@@ -48,7 +48,7 @@ const routes = [
     icon: <VscOutput />,
   },
   {
-    path: "/procesar",
+    path: "/process-ticket",
     label: "Procesar Pedido",
     icon: <BsClipboardCheck />,
   },
@@ -158,7 +158,7 @@ export default function MainLayout({
         <div className="flex-1 overflow-y-auto pb-5">
           <div className="flex items-center justify-between pt-5 px-5">
             <h2 className="text-2xl font-semibold">
-              {capitalize(location.pathname.split("/")[1])}
+              {capitalize(location.pathname.split("/")[1]).replace("-", " ")}
             </h2>
             <div className="flex items-center gap-5">
               <p>
