@@ -35,6 +35,8 @@ model Ticket {
   orderDate DateTime @default(now())
   deliveryDate DateTime?
   updatedAt DateTime @updatedAt
+  process Boolean? @default(false)
+  folio Int @unique
   sales Output[]
   flowers Flower[]
   userId Int

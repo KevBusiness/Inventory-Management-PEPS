@@ -89,6 +89,9 @@ export default function ShowTicket() {
         Ultima actualizacion el dia {formatToDate(ticket.updatedAt.toString())}.
       </p>
       <div className="flex items-center gap-x-2 my-4">
+        <p className="text-sm">
+          Folio: <span className="font-semibold">{ticket.folio}</span>
+        </p>
         <p className="text-sm">Estado:</p>
         <p className="text-sm underline underline-offset-2 font-semibold">
           {ticket.status}

@@ -42,7 +42,8 @@ import {
 } from "~/components/ui/select";
 import { authenticator } from "~/services/auth.server";
 import PivotTable from "~/components/form/pivot_table";
-import { generateUniqueCode } from "~/lib/utils";
+import { generateFolioNumber, generateUniqueCode } from "~/lib/utils";
+import capitalize from "lodash/capitalize";
 
 const steps = [
   { label: "Seleccionar Flores", icon: <TbInvoice /> },
@@ -81,9 +82,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     case "action_make":
       flower_name = formData.get("flower_name") as string;
       await db.flowerBox.create({
-        data: { name: flower_name, code: generateUniqueCode() },
+        data: { name: capitalize(flower_name), code: generateUniqueCode() },
       });
-      session.flash("success", `${flower_name} ha sido añadido correctamente.`);
+      session.flash(
+        "success",
+        `${capitalize(flower_name)} ha sido añadido correctamente.`
+      );
       return new Response(null, {
         status: 201,
         headers: {
@@ -121,6 +125,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             (acc, flower) => acc + flower.price * flower.currentStockFresh,
             0
           ),
+          folio: generateFolioNumber(),
         },
       });
       flowers.forEach(async (flower) => {

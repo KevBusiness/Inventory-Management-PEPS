@@ -58,10 +58,9 @@ export default function ticketCard({
     >
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-medium text-gray-800 dark:text-gray-200">
-          ACT: {formatToDate(ticket.updatedAt.toString())}
+          FOLIO-{ticket.folio}
         </CardTitle>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          {/* TODO: ADD TICKET.REVENUE */}
           Venta Acumulada:{" "}
           {formatToMXN(ticket.sales.reduce((acc, sale) => acc + sale.total, 0))}
         </p>

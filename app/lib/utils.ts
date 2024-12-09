@@ -47,4 +47,10 @@ export function generateUniqueCode(): number {
   return code;
 }
 
-const uniqueCode = generateUniqueCode();
+export function generateFolioNumber(length: number = 8): number {
+  let folioNumber = "";
+  for (let i = 0; i < length; i++) {
+    folioNumber += Math.floor(Math.random() * 10).toString();
+  }
+  return parseInt(folioNumber, 10);
+}
