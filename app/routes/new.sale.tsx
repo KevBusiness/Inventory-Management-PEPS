@@ -26,6 +26,10 @@ import { LiaSaveSolid } from "react-icons/lia";
 import { TbInvoice } from "react-icons/tb";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 import { F } from "node_modules/@faker-js/faker/dist/airline-BLb3y-7w";
+import {
+  getAllTickets,
+  getTicket,
+} from "~/database/controller/general/tickets";
 
 const steps = [
   { label: "Seleccionar Ticket", icon: <TbInvoice /> },
@@ -44,7 +48,7 @@ const headerTable = [
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Nueva Venta" },
+    { title: "Nueva venta | Inventory Management" },
     {
       name: "description",
       content: "Inventory management for a flower shop",
@@ -103,6 +107,35 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       ),
     },
   });
+  const ticketFound = await db.ticket.findUnique({
+    where: {
+      id: +ticket!,
+    },
+    include: {
+      flowers: {
+        select: {
+          currentStockFresh: true,
+          currentwiltedFlowers: true,
+        },
+      },
+    },
+  });
+  if (
+    ticketFound?.flowers.reduce(
+      (acc, flower) =>
+        acc + (flower.currentStockFresh + (flower.currentwiltedFlowers || 0)),
+      0
+    ) === 0
+  ) {
+    await db.ticket.update({
+      where: {
+        id: ticketFound.id,
+      },
+      data: {
+        status: "Agotado",
+      },
+    });
+  }
   session.flash("success", "La venta ha sido añadida correctamente.");
   return redirect("/dashboard", {
     headers: {
@@ -117,52 +150,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const step = url.searchParams.get("step");
   const ticketSelect = url.searchParams.get("ticket");
   if (!step) {
-    return await db.ticket
-      .findMany({
-        where: {
-          status: "Disponible",
-        },
-        include: {
-          flowers: {
-            select: {
-              currentStockFresh: true,
-              currentwiltedFlowers: true,
-            },
-          },
-          sales: {
-            select: {
-              total: true,
-            },
-          },
-        },
-      })
-      .catch((error) => {
-        console.error(error);
-        return null;
-      });
+    return getAllTickets();
   } else if (step === "1" && ticketSelect) {
-    return await db.ticket
-      .findUnique({
-        where: {
-          id: Number(ticketSelect),
-        },
-        include: {
-          flowers: {
-            include: {
-              flowerBox: {
-                select: {
-                  name: true,
-                  currentWiltedPrice: true,
-                },
-              },
-            },
-          },
-        },
-      })
-      .catch((error) => {
-        console.error(error);
-        return null;
-      });
+    return getTicket(ticketSelect);
   } else if (step === "2") {
     return [];
   }

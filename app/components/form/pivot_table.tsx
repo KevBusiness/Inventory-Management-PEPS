@@ -175,6 +175,21 @@ export default function PivotTable({
                     }
                   />
                   <InputCustom
+                    color="blue"
+                    type="number"
+                    width="w-56"
+                    placeholder="0"
+                    onChange={(e) =>
+                      handleAmount &&
+                      handleAmount(
+                        e,
+                        item.id as number,
+                        item.name as string,
+                        "price_buy"
+                      )
+                    }
+                  />
+                  <InputCustom
                     color="green"
                     type="number"
                     width="w-56"
@@ -185,7 +200,7 @@ export default function PivotTable({
                         e,
                         item.id as number,
                         item.name as string,
-                        "price"
+                        "price_sale"
                       )
                     }
                   />

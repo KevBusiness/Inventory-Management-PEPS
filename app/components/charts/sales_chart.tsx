@@ -62,6 +62,9 @@ const SalesChart: React.FC<SalesChartProps> = ({ sales }) => {
             saleDate.getMonth() === currentMonth
           );
         });
+
+        // Agrupar por mes
+        filtered = groupByMonth(filtered);
         break;
       case "weekly":
         // Filtrar las ventas de la semana actual
@@ -76,6 +79,9 @@ const SalesChart: React.FC<SalesChartProps> = ({ sales }) => {
             saleDayOfWeek <= currentDayOfWeek
           );
         });
+
+        // Agrupar por día de la semana
+        filtered = groupByWeekDay(filtered);
         break;
       default:
         filtered = [];
@@ -106,10 +112,67 @@ const SalesChart: React.FC<SalesChartProps> = ({ sales }) => {
     }));
   };
 
+  // Función para agrupar las ventas por mes (para el filtro mensual)
+  const groupByMonth = (sales: Sale[]) => {
+    const grouped: any = {};
+
+    sales.forEach((sale) => {
+      const saleDate = new Date(sale.createdAt);
+      const month = saleDate.getMonth(); // 0 a 11
+      const monthNames = [
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
+      ];
+      const key = `${monthNames[month]} ${saleDate.getFullYear()}`;
+
+      if (!grouped[key]) {
+        grouped[key] = 0;
+      }
+
+      grouped[key] += sale.total;
+    });
+
+    return Object.entries(grouped).map(([key, value]) => ({
+      hour: key,
+      total: value,
+    }));
+  };
+
+  // Función para agrupar las ventas por día de la semana (para el filtro semanal)
+  const groupByWeekDay = (sales: Sale[]) => {
+    const grouped: any = {};
+
+    sales.forEach((sale) => {
+      const saleDate = new Date(sale.createdAt);
+      const weekDay = saleDate.toLocaleString("es-ES", { weekday: "long" }); // Días en español
+
+      if (!grouped[weekDay]) {
+        grouped[weekDay] = 0;
+      }
+
+      grouped[weekDay] += sale.total;
+    });
+
+    return Object.entries(grouped).map(([key, value]) => ({
+      hour: key,
+      total: value,
+    }));
+  };
+
   return (
     <div>
       {/* Filtros */}
-      <div className="flex justify-center mb-6">
+      <div className="flex my-4">
         <button
           className={`px-4 py-2 mx-2 rounded-md ${
             filterType === "daily" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -128,11 +191,11 @@ const SalesChart: React.FC<SalesChartProps> = ({ sales }) => {
         </button>
         <button
           className={`px-4 py-2 mx-2 rounded-md ${
-            filterType === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
+            filterType === "monthly" ? "bg-blue-500 text-white" : "bg-gray-200"
           }`}
-          onClick={() => setFilterType("all")}
+          onClick={() => setFilterType("monthly")}
         >
-          Todos
+          Mensual
         </button>
       </div>
 

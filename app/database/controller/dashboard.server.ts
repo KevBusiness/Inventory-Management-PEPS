@@ -31,7 +31,7 @@ export async function getData() {
       }),
       db.ticket.findMany({
         where: {
-          status: "Disponible",
+          process: true,
         },
         select: {
           id: true,
@@ -73,7 +73,6 @@ export async function getData() {
         0
       ),
     }));
-
     return { flowers: processedFlowers, sales, tickets };
   } catch (err) {
     console.log(err);

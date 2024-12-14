@@ -32,7 +32,8 @@ interface SalesChartProps {
 
 const SalesChart: React.FC<SalesChartProps> = ({ tickets, sales }) => {
   const [chartData, setChartData] = useState<any[]>([]);
-  const [filter, setFilter] = useState("all"); // Filtro por defecto es "todos"
+  const [dateFilter, setDateFilter] = useState("all"); // Filtro por fechas
+  const [ticketFilter, setTicketFilter] = useState<number | "all">("all"); // Filtro por ticketId
 
   // Función para obtener la fecha de hace x días
   const getDateXDaysAgo = (daysAgo: number) => {
@@ -41,7 +42,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ tickets, sales }) => {
     return date;
   };
 
-  // Filtrar las ventas según el filtro seleccionado
+  // Filtrar las ventas según el filtro de fecha
   const filterSalesByDate = (sales: Sale[], filter: string) => {
     const now = new Date();
 
@@ -69,11 +70,21 @@ const SalesChart: React.FC<SalesChartProps> = ({ tickets, sales }) => {
     }
   };
 
+  // Filtrar las ventas según el filtro de ticketId
+  const filterSalesByTicketId = (sales: Sale[], ticketId: number | "all") => {
+    if (ticketId === "all") return sales;
+    return sales.filter((sale) => sale.ticketId === ticketId);
+  };
+
   useEffect(() => {
     if (!tickets || !sales) return;
 
-    // Filtrar las ventas según el filtro
-    const filteredSales = filterSalesByDate(sales, filter);
+    // Filtrar las ventas según los filtros
+    const filteredSalesByDate = filterSalesByDate(sales, dateFilter);
+    const filteredSales = filterSalesByTicketId(
+      filteredSalesByDate,
+      ticketFilter
+    );
 
     // Mapear los datos de tickets y ventas
     const updatedData = tickets.map((ticket) => {
@@ -97,37 +108,55 @@ const SalesChart: React.FC<SalesChartProps> = ({ tickets, sales }) => {
     });
 
     setChartData(updatedData);
-  }, [tickets, sales, filter]);
+  }, [tickets, sales, dateFilter, ticketFilter]);
 
   return (
     <div>
-      {/* Filtro */}
-      <div className="flex justify-center mb-6">
+      {/* Filtros */}
+      <div className="flex my-4">
         <button
           className={`px-4 py-2 mx-2 rounded-md ${
-            filter === "daily" ? "bg-blue-500 text-white" : "bg-gray-200"
+            dateFilter === "daily" ? "bg-blue-500 text-white" : "bg-gray-200"
           }`}
-          onClick={() => setFilter("daily")}
+          onClick={() => setDateFilter("daily")}
         >
           Diario
         </button>
         <button
           className={`px-4 py-2 mx-2 rounded-md ${
-            filter === "weekly" ? "bg-blue-500 text-white" : "bg-gray-200"
+            dateFilter === "weekly" ? "bg-blue-500 text-white" : "bg-gray-200"
           }`}
-          onClick={() => setFilter("weekly")}
+          onClick={() => setDateFilter("weekly")}
         >
           Semanal
         </button>
         <button
           className={`px-4 py-2 mx-2 rounded-md ${
-            filter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
+            dateFilter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
           }`}
-          onClick={() => setFilter("all")}
+          onClick={() => setDateFilter("all")}
         >
           Todos
         </button>
       </div>
+
+      {/* Filtro por Ticket ID */}
+      <div className="flex my-4">
+        <label className="mr-2">Filtrar por Ticket ID:</label>
+        <select
+          value={ticketFilter}
+          onChange={(e) => setTicketFilter(Number(e.target.value) || "all")}
+          className="px-4 py-2 rounded-md bg-gray-200"
+        >
+          <option value="all">Todos</option>
+          {tickets?.map((ticket) => (
+            <option key={ticket.id} value={ticket.id}>
+              Lote {ticket.id}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <ResponsiveContainer width="100%" height={400}>
         <BarChart
           data={chartData}

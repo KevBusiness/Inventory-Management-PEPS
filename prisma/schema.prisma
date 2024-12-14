@@ -67,6 +67,8 @@ model FlowerBox {
   min Int?
   code Int?
   description String?
+  currentPrice Float?
+  purchasePrice Float?
   currentWiltedPrice Float?
   flowers Flower[]
   products Product[]
@@ -82,8 +84,10 @@ model Flower {
   id Int @id @default(autoincrement())
   current_price Float
   purchase_price Float?
+  initialAmount Int
   currentStockFresh Int
   currentwiltedFlowers Int?
+  min Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   flowerBoxId Int

@@ -135,13 +135,10 @@ export default function ShowTicket() {
             Limpiar
           </Button>
         </div>
-        <Button
-          className="h-10"
-          variant={"link"}
-          type="button"
-          onClick={() => navigate(-1)}
-        >
-          Volver a los tickets
+        <Button className="h-10" variant={"link"} type="button">
+          <Link to={"/tickets"} prefetch="render">
+            Volver a los tickets
+          </Link>
         </Button>
       </div>
       <div className="mt-5">
@@ -166,7 +163,9 @@ export default function ShowTicket() {
             <TableBody>
               {filteredFlowers.map((flower, index) => (
                 <TableRow
-                  className="odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100"
+                  className={cn(
+                    "odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100"
+                  )}
                   key={index}
                 >
                   {/* Mueve el motion.td directamente dentro de TableCell */}

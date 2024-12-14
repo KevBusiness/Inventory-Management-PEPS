@@ -42,7 +42,7 @@ export function ProgressBar({ currentStep = 0, steps }: ProgressBarProps) {
         </AnimatePresence>
       </div>
       <AnimatePresence>
-        {path === "sale" ? (
+        {path === "sale" || path === "adjust-inventory" ? (
           <motion.div
             className="border-t h-fit py-3"
             initial={{ opacity: 0, y: 20 }}

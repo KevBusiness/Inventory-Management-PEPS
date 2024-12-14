@@ -62,6 +62,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         select: {
           currentStockFresh: true,
           currentwiltedFlowers: true,
+          initialAmount: true,
         },
       },
       sales: {
@@ -114,7 +115,7 @@ export default function TicketsMain() {
       <p className="mt-2 text-sm">Entradas del inventario.</p>
       <div className="flex justify-between my-5">
         <div className="flex items-center gap-x-5">
-          <Button className="h-10">
+          <Button className="h-10 bg-blue-600 hover:bg-blue-700">
             <Link to="/new/ticket">Nuevo Pedido</Link>
           </Button>
           <div className="relative">

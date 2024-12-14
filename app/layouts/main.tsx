@@ -20,6 +20,7 @@ import { BsBell } from "react-icons/bs";
 import { AnimatePresence, motion } from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { BsClipboardCheck, BsBoxes } from "react-icons/bs";
+import { HiAdjustmentsHorizontal } from "react-icons/hi2";
 
 const routes = [
   {
@@ -33,14 +34,19 @@ const routes = [
     icon: <TbInvoice />,
   },
   {
-    path: "/inventario",
+    path: "/stock",
     label: "Inventario PEPS",
     icon: <MdOutlineInventory2 />,
   },
   {
-    path: "/existencias",
+    path: "/current-stock",
     label: "Existencias",
     icon: <BsBoxes />,
+  },
+  {
+    path: "/new/adjust-inventory",
+    label: "Ajustar Inventario",
+    icon: <HiAdjustmentsHorizontal />,
   },
   {
     path: "/new/sale",
@@ -57,11 +63,6 @@ const routes = [
     label: "Calculadora",
     icon: <CiCalculator2 />,
   },
-  // {
-  //   path: "/new-ticket",
-  //   label: "New Ticket",
-  //   icon: <FaCloudUploadAlt />,
-  // },
 ];
 
 const colors = ["lime", "rose", "blue"];
@@ -150,7 +151,10 @@ export default function MainLayout({
             </nav>
           </div>
           <div className="px-3 pt-5 border-t">
-            <Button asChild className="h-10 w-full">
+            <Button
+              asChild
+              className="h-10 w-full bg-rose-500 hover:bg-rose-600"
+            >
               <a href="/logout">Cerrar sesión</a>
             </Button>
           </div>

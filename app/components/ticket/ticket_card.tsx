@@ -7,17 +7,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Minus, Plus } from "lucide-react";
+import { FiCopy } from "react-icons/fi";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 
 const statusColors = {
   Pedido:
-    "bg-amber-100 hover:bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+    "bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
   Disponible:
-    "bg-green-100 hover:bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  Agotado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    "bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200",
+  Agotado:
+    "bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
 interface TicketFetchProps extends Ticket {
   flowers: {
+    initialAmount?: number;
     currentStockFresh: number;
     currentwiltedFlowers: number | null;
   }[];
@@ -40,14 +54,24 @@ export default function ticketCard({
   const navigation = useNavigation();
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
   const [_, setSearchParams] = useSearchParams();
+
+  const copyFolioToClipboard = () => {
+    const folioText = `FOLIO-${ticket.folio}`;
+    navigator.clipboard
+      .writeText(folioText)
+      .then(() => {
+        alert("Folio copiado al portapapeles!");
+      })
+      .catch((err) => {
+        alert("No se pudo copiar el folio");
+      });
+  };
+
   return (
     <Card
-      // TODO: Check the color of the border
       className={cn(
-        onFocus === ticket.id.toString()
-          ? "border-neutral-500 border ring-2 ring-neutral-300"
-          : "",
-        "overflow-hidden transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+        onFocus === ticket.id.toString() ? "ring-1 ring-blue-600" : "",
+        "overflow-hidden transition-all duration-300 transform"
       )}
       onClick={() => {
         setSearchParams((prev) => ({
@@ -57,8 +81,20 @@ export default function ticketCard({
       }}
     >
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium text-gray-800 dark:text-gray-200">
-          FOLIO-{ticket.folio}
+        <CardTitle className="text-lg font-medium text-gray-800 dark:text-gray-200 flex items-center mb-2">
+          <span>FOLIO-{ticket.folio}</span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="ml-2"
+            onClick={(e) => {
+              copyFolioToClipboard();
+              e.stopPropagation();
+            }}
+            aria-label="Copiar folio"
+          >
+            <FiCopy />
+          </Button>
         </CardTitle>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Venta Acumulada:{" "}
@@ -75,7 +111,6 @@ export default function ticketCard({
               N.Lote: {ticket.id}
             </span>
           </div>
-          {/* TODO: update this part */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -136,6 +171,16 @@ export default function ticketCard({
                       </span>
                     </li>
                     <li>
+                      Unidades ingresadas:{" "}
+                      <span className="font-semibold">
+                        {ticket.flowers.reduce(
+                          (acc, flower) => acc + (flower.initialAmount || 0),
+                          0
+                        )}{" "}
+                        Unidades
+                      </span>
+                    </li>
+                    <li>
                       Fecha de orden:{" "}
                       <span className="font-semibold">
                         {formatToDate(ticket.orderDate.toString())}
@@ -154,17 +199,46 @@ export default function ticketCard({
                       )}
                     </li>
                   </ul>
-                  <Form method="DELETE">
-                    <input type="hidden" name="ticket" value={ticket.id} />
-                    <Button
-                      type="submit"
-                      className="h-10 w-full mt-2"
-                      variant={"destructive"}
-                      disabled={navigation.state === "submitting"}
-                    >
-                      Eliminar
-                    </Button>
-                  </Form>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        className="h-10 w-full mt-2"
+                      >
+                        Eliminar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Estas seguro que quieres eliminar este ticket?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta accion es irreversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="h-10">
+                          Cancelar
+                        </AlertDialogCancel>
+                        <Form method="DELETE">
+                          <input
+                            type="hidden"
+                            name="ticket"
+                            value={ticket.id}
+                          />
+                          <AlertDialogAction
+                            type="submit"
+                            className="h-10"
+                            disabled={navigation.state === "submitting"}
+                          >
+                            Continue
+                          </AlertDialogAction>
+                        </Form>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </motion.div>
             )}

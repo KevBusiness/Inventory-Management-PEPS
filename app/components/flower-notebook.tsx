@@ -7,7 +7,8 @@ type FlowerDetails = {
   flowerBoxId: number;
   name: string;
   currentStockFresh: number;
-  price: number;
+  current_price: number;
+  purchase_price: number;
 };
 
 interface NotebookProps {
@@ -18,13 +19,15 @@ interface NotebookProps {
 const FlowerEntry: React.FC<FlowerDetails> = ({
   name,
   currentStockFresh,
-  price,
+  current_price,
+  purchase_price,
 }) => (
   <div className="mb-6 flex items-center">
     <Flower className="mr-2 h-5 w-5 text-pink-500" />
     <span className="flex-1">{name}</span>
     <span className="flex-1 text-center">{currentStockFresh}</span>
-    <span className="flex-1 text-right">{formatToMXN(price)}</span>
+    <span className="flex-1 text-right">{formatToMXN(purchase_price)}</span>
+    <span className="flex-1 text-right">{formatToMXN(current_price)}</span>
   </div>
 );
 
@@ -69,7 +72,8 @@ export default function FlowerNotebook({ flowers, type }: NotebookProps) {
               <>
                 <span className="flex-1">Nombre</span>
                 <span className="flex-1 text-center">Cantidad</span>
-                <span className="flex-1 text-right">Precio</span>
+                <span className="flex-1 text-right">Precio / compra</span>
+                <span className="flex-1 text-right">Precio / venta</span>
               </>
             ) : (
               <>
@@ -92,7 +96,7 @@ export default function FlowerNotebook({ flowers, type }: NotebookProps) {
           ))}
           <div className="flex justify-end" style={{ lineHeight: "1.5rem" }}>
             <p>
-              Total:{" "}
+              Total ingresado:{" "}
               <span className="underline underline-offset-8">
                 {formatToMXN(
                   flowers.reduce(
@@ -100,7 +104,7 @@ export default function FlowerNotebook({ flowers, type }: NotebookProps) {
                       acc +
                       (type === "ticket"
                         ? (flower as FlowerDetails).currentStockFresh *
-                          (flower as FlowerDetails).price
+                          (flower as FlowerDetails).purchase_price
                         : (flower as UpdatedFlowers).value *
                           (flower as UpdatedFlowers).price),
                     0

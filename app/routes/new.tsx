@@ -40,20 +40,18 @@ export default function New() {
     <main className="bg-gray-100 h-screen flex flex-col">
       <div className="flex items-center justify-between py-5 px-5 z-10 border-b shadow-md">
         <div className="flex items-center gap-x-2">
-          <Button type="button" className="h-10 w-10" asChild>
+          <Button
+            type="button"
+            className="h-10 w-10 bg-blue-600 hover:bg-blue-700"
+            asChild
+          >
             <Link to={"/dashboard"}>
               <IoHomeOutline />
             </Link>
           </Button>
-          {/* <Button
-            className="w-fit bg-white text-black h-10 hover:bg-white hover:shadow-md transition"
-            onClick={() => navigate(location.pathname)}
-          >
-            <TbRefresh />
-            <span>Actualizar</span>
-          </Button> */}
-          {path === "sale" && !step ? (
-            <div className="relative">
+          {(path === "sale" && !step) ||
+          (path === "adjust-inventory" && !step) ? (
+            <div className="relative ml-5">
               <CiSearch
                 className="absolute top-[0.7rem] left-2 text-muted-foreground"
                 size={20}
@@ -85,6 +83,7 @@ export default function New() {
               <SelectGroup>
                 <SelectItem value="sale">Nueva Venta</SelectItem>
                 <SelectItem value="ticket">Nueva Entrada</SelectItem>
+                <SelectItem value="adjust-inventory">Nuevo Ajuste</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

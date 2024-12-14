@@ -55,19 +55,19 @@ const steps = [
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Nueva Entrada" },
+    { title: "Nueva Entrada | Inventory Management" },
     {
       name: "description",
       content: "Inventory management for a flower shop",
     },
   ];
 };
-
 type FlowersFields = {
   flowerBoxId: number;
   name: string;
   currentStockFresh: number;
-  price: number;
+  purchase_price: number;
+  current_price: number;
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -81,8 +81,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   switch (action) {
     case "action_make":
       flower_name = formData.get("flower_name") as string;
+      const min = formData.get("flower_min") as string;
+      const price_sale = formData.get("flower_sale") as string;
+      const price_purchase = formData.get("flower_purchase") as string;
+      const wilted_price = formData.get("flower_wilted") as string;
       await db.flowerBox.create({
-        data: { name: capitalize(flower_name), code: generateUniqueCode() },
+        data: {
+          name: capitalize(flower_name),
+          code: generateUniqueCode(),
+          min: min ? +min : null,
+          currentPrice: +price_sale,
+          purchasePrice: +price_purchase,
+          currentWiltedPrice: +wilted_price,
+        },
       });
       session.flash(
         "success",
@@ -122,19 +133,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           status: status_type,
           userId: Number(user?.id),
           total: flowers.reduce(
-            (acc, flower) => acc + flower.price * flower.currentStockFresh,
+            (acc, flower) =>
+              acc + flower.purchase_price * flower.currentStockFresh,
             0
           ),
           folio: generateFolioNumber(),
         },
       });
       flowers.forEach(async (flower) => {
-        const { flowerBoxId, currentStockFresh, price } = flower;
+        const {
+          flowerBoxId,
+          currentStockFresh,
+          purchase_price,
+          current_price,
+        } = flower;
         await db.flower.create({
           data: {
             flowerBoxId,
-            current_price: price,
+            current_price,
+            purchase_price,
             currentStockFresh,
+            initialAmount: currentStockFresh,
             ticketId: ticketCreated.id,
           },
         });
@@ -192,8 +211,13 @@ type SelectedFlower = {
   name: string;
 };
 
-const headerFields = ["Nombre", "Cantidad", "Precio Individual"];
-
+const headerFields = [
+  "Nombre",
+  "Cantidad",
+  "Precio de compra",
+  "Precio de venta",
+];
+// T0D0: Actualizar la tabla para que los datos los traiga desde la base de datos.
 // TODO: add drag and drop after selecting flowers
 export default function NewTicket() {
   const submit = useSubmit();
@@ -234,11 +258,20 @@ export default function NewTicket() {
             )
           );
           break;
-        case "price":
+        case "price_buy":
           setFlowersFields((prev) =>
             prev.map((flower) =>
               flower.flowerBoxId === id
-                ? { ...flower, price: Number(e.target.value) }
+                ? { ...flower, purchase_price: Number(e.target.value) }
+                : flower
+            )
+          );
+          break;
+        case "price_sale":
+          setFlowersFields((prev) =>
+            prev.map((flower) =>
+              flower.flowerBoxId === id
+                ? { ...flower, current_price: Number(e.target.value) }
                 : flower
             )
           );
@@ -255,18 +288,32 @@ export default function NewTicket() {
           {
             flowerBoxId: id,
             currentStockFresh: Number(e.target.value),
-            price: 0,
+            purchase_price: 0,
+            current_price: 0,
             name,
           },
         ]);
         break;
-      case "price":
+      case "price_buy":
         setFlowersFields([
           ...flowersFields,
           {
             flowerBoxId: id,
             currentStockFresh: 0,
-            price: Number(e.target.value),
+            purchase_price: Number(e.target.value),
+            current_price: 0,
+            name,
+          },
+        ]);
+        break;
+      case "price_sale":
+        setFlowersFields([
+          ...flowersFields,
+          {
+            flowerBoxId: id,
+            currentStockFresh: 0,
+            current_price: Number(e.target.value),
+            purchase_price: 0,
             name,
           },
         ]);
@@ -302,18 +349,104 @@ export default function NewTicket() {
                 e.currentTarget.reset();
               }}
             >
-              <label htmlFor="flower_name">Nombre de la flor</label>
+              <label
+                htmlFor="flower_name"
+                className="after:content-['*'] after:ml-0.5 after:text-red-500 block text-sm font-medium text-slate-700"
+              >
+                Nombre de la flor
+              </label>
               <Input
                 type="text"
                 id="flower_name"
                 name="flower_name"
-                className="bg-white h-12"
+                className="bg-white h-10"
                 placeholder="Ingrese el nombre de la flor"
+                required
               />
-              <input type="hidden" value="action_make" name="action" />
-              <div className="flex justify-end">
-                <Button className="h-12 w-36">Añadir</Button>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="flower_min"
+                    className="block text-sm font-medium text-slate-700"
+                  >
+                    Cantidad minima
+                  </label>
+                  <Input
+                    type="number"
+                    id="flower_min"
+                    name="flower_min"
+                    className="bg-white h-10"
+                    placeholder="ej: 500 | opcional"
+                  />
+                  <p className="text-sm text-gray-800">
+                    Cantidad minima que desea tener dentro del inventario.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="flower_sale"
+                    className="after:content-['*'] after:ml-0.5 after:text-red-500 block text-sm font-medium text-slate-700"
+                  >
+                    Precio / Venta individual
+                  </label>
+                  <Input
+                    type="number"
+                    id="flower_sale"
+                    name="flower_sale"
+                    className="bg-white h-10"
+                    placeholder="ej: $50"
+                    required
+                  />
+                  <p className="text-sm text-gray-800">
+                    En caso de no fijar un precio de venta, se colocara este
+                    precio.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="flower_purchase"
+                    className="after:content-['*'] after:ml-0.5 after:text-red-500 block text-sm font-medium text-slate-700"
+                  >
+                    Valor / Compra individual
+                  </label>
+                  <Input
+                    type="number"
+                    id="flower_purchase"
+                    name="flower_purchase"
+                    className="bg-white h-10"
+                    placeholder="ej: $20"
+                    required
+                  />
+                  <p className="text-sm text-gray-800">
+                    En caso de no fijar un precio de compra, se colocara este
+                    precio.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="flower_wilted"
+                    className="after:content-['*'] after:ml-0.5 after:text-red-500 block text-sm font-medium text-slate-700"
+                  >
+                    Valor / Marchito individual
+                  </label>
+                  <Input
+                    type="number"
+                    id="flower_wilted"
+                    name="flower_wilted"
+                    className="bg-white h-10"
+                    placeholder="ej: $15 | opcional"
+                    required
+                  />
+                  <p className="text-sm text-gray-800">
+                    En caso de querer fijar un precio general de marchitado,
+                    puede añadir una cantidad.
+                  </p>
+                </div>
               </div>
+              <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700">
+                Añadir Nueva Flor
+              </Button>
+              <input type="hidden" value="action_make" name="action" />
             </Form>
           </div>
           <div className="w-1/3 px-5 border-r space-y-1 overflow-y-auto custom-scrollbar">
