@@ -21,6 +21,7 @@ export async function getAllTickets() {
             currentStockFresh: true,
             currentwiltedFlowers: true,
             initialAmount: true,
+            current_price: true,
           },
         },
         sales: {
@@ -45,10 +46,22 @@ export async function getTicket(id: string) {
       include: {
         flowers: {
           include: {
+            location: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
             flowerBox: {
               select: {
                 name: true,
                 currentWiltedPrice: true,
+                min: true,
+                location: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },

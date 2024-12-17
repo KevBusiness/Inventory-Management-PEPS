@@ -34,6 +34,7 @@ interface TicketFetchProps extends Ticket {
     initialAmount?: number;
     currentStockFresh: number;
     currentwiltedFlowers: number | null;
+    current_price: number;
   }[];
   sales: {
     total: number;
@@ -165,9 +166,24 @@ export default function ticketCard({
                   </p>
                   <ul className="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-2">
                     <li>
-                      Total de ingreso al almacen:{" "}
+                      Costo del ticket:{" "}
                       <span className="font-semibold">
                         {formatToMXN(ticket.total)}
+                      </span>
+                    </li>
+                    <li>
+                      Valor dentro del almacen:{" "}
+                      <span className="font-semibold">
+                        {formatToMXN(
+                          ticket.flowers.reduce(
+                            (acc, flower) =>
+                              acc +
+                              (flower.currentStockFresh +
+                                (flower.currentwiltedFlowers || 0)) *
+                                flower.current_price,
+                            0
+                          )
+                        )}
                       </span>
                     </li>
                     <li>

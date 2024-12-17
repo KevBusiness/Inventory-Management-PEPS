@@ -60,6 +60,17 @@ model Output {
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   @@map("outputs")
 }
+model InventoryAdjustment {
+  id Int @id @default(autoincrement())
+  createdBy Int
+  ticketId Int
+  settings adjustTransaction[]
+  total Float
+  reason String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  @@map("inventory_adjustments")
+}
 
 model FlowerBox {
   id Int @id @default(autoincrement())
@@ -70,14 +81,17 @@ model FlowerBox {
   currentPrice Float?
   purchasePrice Float?
   currentWiltedPrice Float?
+  locationId Int?
   flowers Flower[]
   products Product[]
+  location Location? @relation(fields: [locationId], references: [id])
   @@map("flowerBoxes")
 }
 model Location {
   id Int @id @default(autoincrement())
   name String
   Flowers Flower[]
+  FlowerBox FlowerBox[]
   @@map("locations")
 }
 model Flower {
@@ -97,7 +111,7 @@ model Flower {
   location Location? @relation(fields: [locationId], references: [id])
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   saleTransactions saleTransaction[]
-  adjustmentInventory InventoryAdjustment[]
+  adjustTransactions adjustTransaction[]
   FlowerHistory FlowerHistory[]
   @@map("flowers")
 }
@@ -114,14 +128,31 @@ model saleTransaction {
   flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
   output Output @relation(fields: [outputId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
-  @@map("sale_transactions")
+  @@map("sale_transaction")
 }
 
 enum Quality {
   Fresca
   Marchita
 }
+model adjustTransaction {
+  id Int @id @default(autoincrement())
+  price Float?
+  quantity Int?
+  type TypeAdjust
+  adjustDate DateTime @default(now())
+  flowerId Int
+  adjustInventoryId Int
+  flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
+  output InventoryAdjustment @relation(fields: [adjustInventoryId], references: [id])
+  @@map("adjust_transaction")
+}
 
+enum TypeAdjust {
+  Incremento
+  Decremento
+  Precio
+}
 model Product {
   id Int @id @default(autoincrement())
   name String
@@ -132,18 +163,6 @@ model Product {
   Flowers FlowerBox @relation(fields: [to_use], references: [id], onDelete: Cascade)
 }
 
-model InventoryAdjustment {
-  id Int @id @default(autoincrement())
-  flowerId Int
-  createdBy Int
-  wiltedQuantity Int
-  freshQuantity Int
-  reason String
-  adjustmentDate DateTime @default(now())
-  flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  @@map("inventory_adjustments")
-}
 
 model FlowerHistory {
   id Int @id @default(autoincrement())

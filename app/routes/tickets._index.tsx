@@ -25,6 +25,7 @@ import {
   SelectContent,
   SelectItem,
 } from "~/components/ui/select";
+import { getAllTickets } from "~/database/controller/general/tickets";
 
 export const meta: MetaFunction = () => {
   return [
@@ -56,22 +57,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  return await db.ticket.findMany({
-    include: {
-      flowers: {
-        select: {
-          currentStockFresh: true,
-          currentwiltedFlowers: true,
-          initialAmount: true,
-        },
-      },
-      sales: {
-        select: {
-          total: true,
-        },
-      },
-    },
-  });
+  return await getAllTickets();
 }
 
 export default function TicketsMain() {
@@ -83,16 +69,13 @@ export default function TicketsMain() {
   const selectedTicket = searchParams.get("current");
   const ticketStatus = searchParams.get("status"); // Estado seleccionado
 
-  // Filtrar los tickets por estado y número de lote
   const filteredTickets = Array.isArray(fetchData)
     ? fetchData.filter((ticket) => {
-        // Filtramos por búsqueda de número de lote
         const matchesSearch = ticket.id.toString().includes(searchTerm || "");
 
-        // Filtramos por estado de ticket
         const matchesStatus = ticketStatus
           ? ticket.status === ticketStatus
-          : true; // Si no hay filtro de estado, pasa todos los tickets
+          : true;
 
         return matchesSearch && matchesStatus;
       })
@@ -134,7 +117,6 @@ export default function TicketsMain() {
               }}
             />
           </div>
-          {/* Filtro de estado */}
           <div>
             <Select
               onValueChange={(value) => {
