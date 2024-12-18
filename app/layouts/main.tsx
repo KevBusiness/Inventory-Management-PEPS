@@ -12,10 +12,10 @@ import { PiFlowerTulipDuotone } from "react-icons/pi";
 import { TbInvoice } from "react-icons/tb";
 import { Button } from "~/components/ui/button";
 import { MdOutlineInventory2 } from "react-icons/md";
-import { Separator } from "~/components/ui/separator";
 import { Toaster } from "~/components/ui/toaster";
 import { cn } from "~/lib/utils";
 import { CiCalculator2 } from "react-icons/ci";
+import { TbLocation } from "react-icons/tb";
 import { BsBell } from "react-icons/bs";
 import { AnimatePresence, motion } from "framer-motion";
 import NumberFlow from "@number-flow/react";
@@ -59,14 +59,16 @@ const routes = [
     icon: <BsClipboardCheck />,
   },
   {
-    path: "/calculadora",
-    label: "Calculadora",
+    path: "/locations",
+    label: "Ver ubicaciones",
+    icon: <TbLocation />,
+  },
+  {
+    path: "/pos",
+    label: "Punto de venta",
     icon: <CiCalculator2 />,
   },
 ];
-
-const colors = ["lime", "rose", "blue"];
-
 export default function MainLayout({
   children,
   user,

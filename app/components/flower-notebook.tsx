@@ -96,7 +96,7 @@ export default function FlowerNotebook({ flowers, type }: NotebookProps) {
           ))}
           <div className="flex justify-end" style={{ lineHeight: "1.5rem" }}>
             <p>
-              Total ingresado:{" "}
+              {type === "sale" ? "Total ingresado:" : "Total pedido"}{" "}
               <span className="underline underline-offset-8">
                 {formatToMXN(
                   flowers.reduce(

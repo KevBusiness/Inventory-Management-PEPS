@@ -140,6 +140,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           folio: generateFolioNumber(),
         },
       });
+      const location = await db.location.findUnique({
+        where: {
+          defaultLocation: true,
+        },
+      });
       flowers.forEach(async (flower) => {
         const {
           flowerBoxId,
@@ -155,6 +160,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             currentStockFresh,
             initialAmount: currentStockFresh,
             ticketId: ticketCreated.id,
+            locationId: location?.id,
           },
         });
       });

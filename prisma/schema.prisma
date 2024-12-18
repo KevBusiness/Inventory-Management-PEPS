@@ -90,6 +90,7 @@ model FlowerBox {
 model Location {
   id Int @id @default(autoincrement())
   name String
+  defaultLocation Boolean? @unique
   Flowers Flower[]
   FlowerBox FlowerBox[]
   @@map("locations")
