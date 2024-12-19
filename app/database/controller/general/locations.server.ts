@@ -33,6 +33,15 @@ interface SortedLocationData {
 
 export async function getAllLocations() {
   try {
+    return await db.location.findMany();
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+export async function getSortedLocations() {
+  try {
     const data: LocationData[] = await db.location.findMany({
       select: {
         name: true,

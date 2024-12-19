@@ -1,6 +1,6 @@
 import { User } from "@prisma/client";
 import db from "../prisma.server";
-import { getAllLocations } from "./general/locations";
+import { getAllLocations } from "./general/locations.server";
 import { getTicket } from "./general/tickets";
 
 export async function getData(ticketId: string) {

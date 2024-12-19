@@ -4,8 +4,8 @@ import { Form, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   createLocation,
   deleteLocation,
-  getAllLocations,
-} from "~/database/controller/general/locations";
+  getSortedLocations,
+} from "~/database/controller/general/locations.server";
 import MainLayout from "~/layouts/main";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -37,7 +37,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
-  const locations = await getAllLocations();
+  const locations = await getSortedLocations();
   return { user: user!, locations };
 }
 
