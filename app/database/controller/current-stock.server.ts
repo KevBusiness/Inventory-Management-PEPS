@@ -41,7 +41,10 @@ export async function getCurrentStock() {
       min: item.min,
       locations: item.flowers.join("location").length > 0 ? true : false,
       total: item.flowers.reduce(
-        (acc, flower) => acc + flower.currentStockFresh * flower.current_price,
+        (acc, flower) =>
+          acc +
+          (flower.currentStockFresh + (flower.currentwiltedFlowers || 0)) *
+            flower.current_price,
         0
       ),
     }));

@@ -2,6 +2,7 @@ import {
   ActionFunctionArgs,
   LoaderFunctionArgs,
   MetaFunction,
+  redirect,
 } from "@remix-run/node";
 import { Form, useLoaderData, useSearchParams } from "@remix-run/react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -37,9 +38,10 @@ import {
 import {
   getData,
   UpdateInventory,
-} from "~/database/controller/adjust-inventory";
+} from "~/database/controller/adjust-inventory.server";
 import { useRef } from "react";
 import { authenticator } from "~/services/auth.server";
+import { commitSession, getSession } from "~/services/alerts.session.server";
 
 type AdjustField = {
   action: string;
@@ -67,12 +69,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
+  const session = await getSession(request.headers.get("Cookie"));
   const formData = await request.formData();
+  const url = new URL(request.url);
+  const ticketId = url.searchParams.get("ticket");
+  if (!ticketId) throw new Error("No existe un ticketId");
   const values = formData.get("values") as null | string;
   if (!values) throw new Error("No existe data");
   const data = JSON.parse(values) as AdjustField[];
-  await UpdateInventory(data, user!);
-  return null;
+  await UpdateInventory(data, user!, +ticketId!);
+  session.flash("success", "El inventario fue ajustado correctamente.");
+  return redirect("/dashboard", {
+    headers: {
+      "Set-Cookie": await commitSession(session),
+    },
+  });
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -147,7 +158,7 @@ export default function AdjustInventory() {
                 <TableHead className="w-[150px]">Cantidad Fresca</TableHead>
                 <TableHead className="w-[150px]">Cantidad Marchita</TableHead>
                 <TableHead className="w-[180px]">Ubicacion</TableHead>
-                <TableHead className="w-[180px]">Precio</TableHead>
+                {/* <TableHead className="w-[180px]">Precio</TableHead> */}
                 <TableHead className="w-[150px]">Alertar en:</TableHead>
               </TableRow>
             </TableHeader>
@@ -221,8 +232,11 @@ export default function AdjustInventory() {
                               ?.filter(
                                 (location) => location.id !== flower.locationId
                               )
-                              .map((location) => (
-                                <SelectItem value={location.id.toString()}>
+                              .map((location, index) => (
+                                <SelectItem
+                                  value={location.id.toString()}
+                                  key={index}
+                                >
                                   {location.name}
                                 </SelectItem>
                               ))}
@@ -230,7 +244,7 @@ export default function AdjustInventory() {
                         </SelectContent>
                       </Select>
                     </motion.td>
-                    <motion.td
+                    {/* <motion.td
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -244,7 +258,7 @@ export default function AdjustInventory() {
                           flower.current_price
                         )}`}
                       />
-                    </motion.td>
+                    </motion.td> */}
                     <motion.td
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -253,7 +267,7 @@ export default function AdjustInventory() {
                       className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                     >
                       <Input
-                        name={`flower-${flower.id}-currentPrice`}
+                        name={`flower-${flower.id}-currentMin`}
                         type="number"
                         placeholder={`Actual: ${
                           flower.min || flower.flowerBox.min || "N/A"

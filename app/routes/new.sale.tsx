@@ -142,7 +142,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       "Set-Cookie": await commitSession(session),
     },
   });
-  return null;
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {

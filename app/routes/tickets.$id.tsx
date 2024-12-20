@@ -230,7 +230,11 @@ export default function ShowTicket() {
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                     className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                   >
-                    {!flower.flowerBox.min ? "N/A" : flower.flowerBox.min}
+                    {flower.min
+                      ? flower.min
+                      : flower.flowerBox.min
+                      ? flower.flowerBox.min
+                      : "N/A"}
                   </motion.td>
 
                   <motion.td
