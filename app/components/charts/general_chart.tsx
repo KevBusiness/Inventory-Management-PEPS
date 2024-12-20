@@ -10,6 +10,7 @@ import {
   Legend,
   ReferenceLine,
 } from "recharts";
+import { formatToMXN } from "~/lib/utils";
 
 // Datos de tickets
 interface Ticket {
@@ -184,8 +185,12 @@ const SalesChart: React.FC<SalesChartProps> = ({ tickets, sales }) => {
                     <p className="text-lg font-semibold">
                       Ticket ID: {ticketId}
                     </p>
-                    <p className="text-sm">Total Ticket: {ticketTotal}</p>
-                    <p className="text-sm">Ventas: {salesTotal}</p>
+                    <p className="text-sm">
+                      Costo del ticket: {formatToMXN(ticketTotal)}
+                    </p>
+                    <p className="text-sm">
+                      Ventas totales: {formatToMXN(salesTotal)}
+                    </p>
                   </div>
                 );
               }

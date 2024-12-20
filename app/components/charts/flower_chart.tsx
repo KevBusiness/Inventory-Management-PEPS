@@ -14,8 +14,14 @@ interface FlowerChartProps {
 const FlowerChart: React.FC<FlowerChartProps> = ({ flowers }) => {
   if (!flowers) return "Ups, algo salió mal.";
 
-  const filteredData = flowers.filter((item) => item.currentFresh > 0);
-  // Generar colores únicos para cada flor
+  const sortedData = flowers
+    .filter((item) => item.currentFresh > 0)
+    .map((flower) => ({
+      name: flower.name,
+      value: flower.currentFresh + flower.currentWilted,
+      currentFresh: flower.currentFresh,
+      currentWilted: flower.currentWilted,
+    }));
   const COLORS = [
     "#D1A1D5", // Lavanda suave
     "#4ECDC4", // Verde menta
@@ -31,9 +37,8 @@ const FlowerChart: React.FC<FlowerChartProps> = ({ flowers }) => {
 
   return (
     <div className="w-full h-full flex items-center">
-      {/* Leyenda de flores */}
       <div className="flex flex-col justify-center w-52 h-80 overflow-y-auto pr-2">
-        {filteredData.map((flower, index) => (
+        {sortedData.map((flower, index) => (
           <div
             key={flower.name}
             style={{
@@ -55,20 +60,19 @@ const FlowerChart: React.FC<FlowerChartProps> = ({ flowers }) => {
         ))}
       </div>
 
-      {/* Gráfica Circular */}
       <ResponsiveContainer width="100%">
         <PieChart>
           <Pie
-            data={filteredData}
-            dataKey="currentFresh"
+            data={sortedData}
+            dataKey="value"
             nameKey="name"
             cx="50%"
             cy="50%"
             outerRadius={150}
-            labelLine={false} // Desactivamos las líneas que van a las etiquetas
-            label={true} // Usamos la función personalizada para las etiquetas
+            labelLine={false}
+            label={true}
           >
-            {filteredData.map((entry, index) => (
+            {sortedData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={COLORS[index % COLORS.length]}

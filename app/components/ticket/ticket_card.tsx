@@ -2,12 +2,18 @@ import { useState } from "react";
 import { Form, useSearchParams, useNavigation } from "@remix-run/react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Ticket } from "@prisma/client";
-import { cn, formatToDate, formatToMXN } from "~/lib/utils";
+import {
+  calculateProfitOrLossPercentage,
+  cn,
+  formatToDate,
+  formatToMXN,
+} from "~/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Minus, Plus } from "lucide-react";
 import { FiCopy } from "react-icons/fi";
+import { FaArrowTrendUp, FaArrowTrendDown } from "react-icons/fa6";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,20 +88,39 @@ export default function ticketCard({
       }}
     >
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium text-gray-800 dark:text-gray-200 flex items-center mb-2">
-          <span>FOLIO-{ticket.folio}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            className="ml-2"
-            onClick={(e) => {
-              copyFolioToClipboard();
-              e.stopPropagation();
-            }}
-            aria-label="Copiar folio"
-          >
-            <FiCopy />
-          </Button>
+        <CardTitle className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2 flex items-center justify-between">
+          <div className="flex items-center">
+            <span>FOLIO-{ticket.folio}</span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="ml-2"
+              onClick={(e) => {
+                copyFolioToClipboard();
+                e.stopPropagation();
+              }}
+              aria-label="Copiar folio"
+            >
+              <FiCopy />
+            </Button>
+          </div>
+          {ticket.process && (
+            <div className="flex items-center gap-x-2">
+              <span className={cn("text-sm")}>
+                {calculateProfitOrLossPercentage(
+                  ticket.total,
+                  ticket.sales.reduce((acc, sale) => acc + sale.total, 0)
+                )}
+                %
+              </span>
+              {ticket.total >
+              ticket.sales.reduce((acc, sale) => acc + sale.total, 0) ? (
+                <FaArrowTrendDown className="text-red-600" />
+              ) : (
+                <FaArrowTrendUp className="text-green-600" />
+              )}
+            </div>
+          )}
         </CardTitle>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Venta Acumulada:{" "}
@@ -172,7 +197,20 @@ export default function ticketCard({
                       </span>
                     </li>
                     <li>
-                      Valor dentro del almacen:{" "}
+                      Valor inicial dentro del almacen:{" "}
+                      <span className="font-semibold">
+                        {formatToMXN(
+                          ticket.flowers.reduce(
+                            (acc, flower) =>
+                              acc +
+                              flower.initialAmount! * flower.current_price,
+                            0
+                          )
+                        )}
+                      </span>
+                    </li>
+                    <li>
+                      Valor actual dentro del almacen:{" "}
                       <span className="font-semibold">
                         {formatToMXN(
                           ticket.flowers.reduce(

@@ -54,10 +54,7 @@ export async function getPeps() {
       0
     ),
     value: ticket.flowers.reduce(
-      (acc, flower) =>
-        acc +
-        (flower.currentStockFresh + (flower.currentwiltedFlowers || 0)) *
-          flower.current_price,
+      (acc, flower) => acc + flower.initialAmount * flower.current_price,
       0
     ),
     ticketId: ticket.id,

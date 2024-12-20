@@ -54,3 +54,16 @@ export function generateFolioNumber(length: number = 8): number {
   }
   return parseInt(folioNumber, 10);
 }
+
+export function calculateProfitOrLossPercentage(
+  costValue: number,
+  salesValue: number
+) {
+  if (salesValue > costValue) {
+    let profit = ((salesValue - costValue) / costValue) * 100;
+    return profit;
+  } else {
+    let loss = ((costValue - salesValue) / costValue) * 100;
+    return -loss;
+  }
+}

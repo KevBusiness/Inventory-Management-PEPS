@@ -88,7 +88,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await db.saleTransaction.create({
       data: {
         flowerId: flower_updated.id,
-        price: flower_updated.current_price,
+        price:
+          flower.type === "fresh" ? flower_updated.current_price : flower.price,
         quantity: flower.value,
         quality: flower.type === "fresh" ? "Fresca" : "Marchita",
         outputId: output.id,

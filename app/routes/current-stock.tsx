@@ -46,7 +46,11 @@ export default function CurrentStock() {
         Cantidad actual{" "}
         {stock ? (
           <span className="font-bold text-blue-700">
-            {stock.reduce((acc, x) => acc + x.currentAmout, 0)} Unidades
+            {stock.reduce(
+              (acc, x) => acc + (x.currentAmout + x.currentWilted),
+              0
+            )}{" "}
+            Unidades
           </span>
         ) : (
           "No disponible"

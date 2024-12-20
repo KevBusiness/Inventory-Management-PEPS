@@ -78,6 +78,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           flowers: {
             select: {
               currentStockFresh: true,
+              current_price: true,
               flowerBox: {
                 select: {
                   name: true,
@@ -165,10 +166,23 @@ export default function ProcessTicket() {
               >
                 <p className="font-semibold text-xl">Resultado:</p>
                 <p className="border-y py-2 my-2">
-                  Ingreso ala bodega:{" "}
+                  El costo del pedido fue de:{" "}
                   <span className="font-semibold">
-                    {formatToMXN(ticketFound.total)} Pesos
+                    {formatToMXN(ticketFound.total)}
                   </span>
+                </p>
+                <p className="border-y py-2 my-2">
+                  Se ingresara la cantidad de:{" "}
+                  <span className="font-semibold">
+                    {formatToMXN(
+                      ticketFound.flowers.reduce(
+                        (acc, flower) =>
+                          acc + flower.currentStockFresh * flower.current_price,
+                        0
+                      )
+                    )}{" "}
+                  </span>{" "}
+                  al almacen
                 </p>
                 <p className="my-2">
                   Solicitado por:{" "}
