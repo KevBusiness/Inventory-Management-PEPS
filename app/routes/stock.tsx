@@ -142,46 +142,6 @@ export default function Inventory() {
           ) : null}
         </AnimatePresence>
         <div className="mt-5">
-          {/* <div className="flex border-b text-neutral-800/90 text-sm font-semibold bg-neutral-50 transition pt-1 px-1 group">
-            <span className="border-r min-w-[193px] h-12">Fecha</span>
-            <span className="min-w-24 h-12 pl-1">Concepto</span>
-            <div className="pl-1 border-r border-l h-12 w-56">
-              <span>Entradas</span>
-              <div className="flex items-end border-t gap-x-5 pt-1">
-                <span className="min-w-[112px] max-w-[112px] border-r">
-                  Unidades
-                </span>
-                <span className="min-w-[112px] max-w-[112px]">Valor</span>
-              </div>
-            </div>
-            <div className="pl-1 border-r h-12 w-56">
-              <span>Salidas</span>
-              <div className="flex items-end border-t gap-x-5 pt-1">
-                <span className="min-w-[112px] max-w-[112px] border-r">
-                  Unidades
-                </span>
-                <span className="min-w-[112px] max-w-[112px]">Valor</span>
-              </div>
-            </div>
-            <div className="pl-1 border-r h-12 w-56">
-              <span>Saldo</span>
-              <div className="flex items-end border-t gap-x-5 pt-1">
-                <span className="min-w-[112px] max-w-[112px] border-r">
-                  Unidades
-                </span>
-                <span className="min-w-[112px] max-w-[112px]">Valor</span>
-              </div>
-            </div>
-            <span className="row-span-2 w-32 flex justify-between border-r pl-1 pr-2 h-12">
-              Movimientos
-            </span>
-            <span className="row-span-2 w-24 flex justify-between border-r pl-1 pr-2 h-12">
-              Ubicacion
-            </span>
-            <span className="row-span-2 w-24 flex justify-between pl-1 pr-2 h-12">
-              Ticket ID
-            </span>
-          </div> */}
           <Table className="border-collapse">
             <TableCaption>Inventario PEPS.</TableCaption>
             <TableBody>
@@ -194,6 +154,7 @@ export default function Inventory() {
                 </TableCell>
                 <TableCell className="min-w-56 border-r">Entradas</TableCell>
                 <TableCell className="min-w-56 border-r">Salidas</TableCell>
+                <TableCell className="min-w-56 border-r">Perdidas</TableCell>
                 <TableCell className="min-w-56 border-r">Saldo</TableCell>
                 {flower ? null : (
                   <>
@@ -210,6 +171,14 @@ export default function Inventory() {
               <TableRow className="bg-neutral-200/90">
                 <TableCell className="font-semibold border-r">
                   <div className="flex h-full">
+                    <span className="min-w-[112px] max-w-[112px]">
+                      Unidades
+                    </span>
+                    <span className="min-w-[112px] max-w-[112px]">Valor</span>
+                  </div>
+                </TableCell>
+                <TableCell className="font-semibold border-r">
+                  <div className="flex">
                     <span className="min-w-[112px] max-w-[112px]">
                       Unidades
                     </span>
@@ -274,6 +243,17 @@ export default function Inventory() {
                           <TableCell className="min-w-[112px] border-r">
                             <div className="flex">
                               <span className="min-w-[112px] max-w-[112px]">
+                                {item.type === "Perdida" && item.amount}
+                              </span>
+                              <span className="min-w-[112px] max-w-[112px]">
+                                {item.type === "Perdida" &&
+                                  formatToMXN(item.value)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="min-w-[112px] border-r">
+                            <div className="flex">
+                              <span className="min-w-[112px] max-w-[112px]">
                                 {item.currentAmount}
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
@@ -329,6 +309,20 @@ export default function Inventory() {
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Salida" &&
+                                  formatToMXN(item.value)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell
+                            className="min-w-[
+                          112px] border-r"
+                          >
+                            <div className="flex">
+                              <span className="min-w-[112px] max-w-[112px]">
+                                {item.type === "Perdida" && item.amount}
+                              </span>
+                              <span className="min-w-[112px] max-w-[112px]">
+                                {item.type === "Perdida" &&
                                   formatToMXN(item.value)}
                               </span>
                             </div>

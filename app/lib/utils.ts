@@ -61,9 +61,9 @@ export function calculateProfitOrLossPercentage(
 ) {
   if (salesValue > costValue) {
     let profit = ((salesValue - costValue) / costValue) * 100;
-    return profit;
+    return profit.toFixed(0);
   } else {
     let loss = ((costValue - salesValue) / costValue) * 100;
-    return -loss;
+    return -loss.toFixed(0);
   }
 }

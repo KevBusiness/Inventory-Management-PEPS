@@ -137,16 +137,24 @@ enum Quality {
 }
 model adjustTransaction {
   id Int @id @default(autoincrement())
-  currentStockFresh Int
+  price Float
+  currentStockFresh Int?
   currentwiltedFlowers Int?
-  min Int?
-  locationId Int?
+  type AjustType?
+  total Float
+  reason String?
   adjustDate DateTime @default(now())
   flowerId Int
   adjustInventoryId Int
   flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
-  output InventoryAdjustment @relation(fields: [adjustInventoryId], references: [id])
+  inventory InventoryAdjustment @relation(fields: [adjustInventoryId], references: [id])
   @@map("adjust_transaction")
+}
+
+enum AjustType {
+  Entrada
+  Salida
+  Perdida
 }
 
 model Product {

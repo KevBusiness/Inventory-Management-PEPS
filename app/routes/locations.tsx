@@ -1,18 +1,21 @@
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import {
+  Form,
+  useLoaderData,
+  useNavigation,
+  useSubmit,
+} from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
-import { Form, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   createLocation,
   deleteLocation,
   getSortedLocations,
 } from "~/database/controller/general/locations.server";
+import { MapPin } from "lucide-react";
 import MainLayout from "~/layouts/main";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
-import { MapPin, Flower2 } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { Flower } from "@prisma/client";
 import { Checkbox } from "~/components/ui/checkbox";
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -43,7 +46,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function locations() {
   const data = useLoaderData<typeof loader>();
+  const subtmit = useSubmit();
   const navigation = useNavigation();
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    subtmit(e.currentTarget);
+    e.currentTarget.reset();
+  };
   return (
     <MainLayout user={data.user}>
       <p className="mt-2 text-sm pl-5">
@@ -51,6 +61,7 @@ export default function locations() {
       </p>
       <Form
         className="p-2 border w-96 rounded-md ml-5 mt-3 space-y-4"
+        onSubmit={(e) => handleSubmit(e)}
         method="post"
       >
         <legend className="font-bold text-xl">Nueva ubicacion</legend>

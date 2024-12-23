@@ -7,6 +7,7 @@ import {
 } from "@remix-run/node";
 import {
   Form,
+  Link,
   useLoaderData,
   useNavigate,
   useSearchParams,
@@ -175,41 +176,52 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 };
 
-type FetchData = {
-  message: string | undefined;
-  flowers: FlowerBox[] | undefined;
-};
+// type FetchData = {
+//   message: string | undefined;
+//   flowers: FlowerBox[] | undefined;
+// };
 
-export const loader = async ({
-  request,
-}: LoaderFunctionArgs): Promise<FetchData> => {
-  let flowers;
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   const session = await getSession(request.headers.get("Cookie"));
   const url = new URL(request.url);
   const stepFound = url.searchParams.get("step");
   if (!stepFound) {
-    flowers = await db.flowerBox
-      .findMany({
-        select: {
-          id: true,
-          name: true,
-        },
-      })
-      .catch((error) => {
+    try {
+      const [flowers, location] = await db.$transaction([
+        db.flowerBox.findMany({
+          select: {
+            id: true,
+            name: true,
+          },
+        }),
+        db.location.findUnique({
+          where: {
+            defaultLocation: true,
+          },
+        }),
+      ]);
+      return Response.json(
+        { message: session.get("success"), flowers, location },
         {
-          console.log(error);
-          return undefined;
+          headers: {
+            "Set-Cookie": await commitSession(session),
+          },
         }
-      });
-  }
-  return Response.json(
-    { message: session.get("success"), flowers },
-    {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
+      );
+    } catch (error) {
+      console.log(error);
+      return null;
     }
-  ) as unknown as FetchData;
+  } else {
+    return Response.json(
+      { message: session.get("success") },
+      {
+        headers: {
+          "Set-Cookie": await commitSession(session),
+        },
+      }
+    );
+  }
 };
 
 type SelectedFlower = {
@@ -227,7 +239,7 @@ const headerFields = [
 // TODO: add drag and drop after selecting flowers
 export default function NewTicket() {
   const submit = useSubmit();
-  const { message, flowers } = useLoaderData<typeof loader>();
+  const { message, flowers, location } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedFlowers, setSelectedFlowers] = useState<SelectedFlower[]>([]);
   const [flowersFields, setFlowersFields] = useState<FlowersFields[]>([]);
@@ -449,9 +461,25 @@ export default function NewTicket() {
                   </p>
                 </div>
               </div>
-              <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700">
+              <Button
+                className="w-full h-10 bg-blue-600 hover:bg-blue-700"
+                disabled={!location ? true : false}
+              >
                 Añadir Nueva Flor
               </Button>
+              {!location && (
+                <p className="text-sm text-red-500 p-2 bg-red-100 rounded-sm">
+                  Para crear una flor, primero hay que tener una ubicacion por
+                  defecto.
+                  <Link
+                    to={"/locations"}
+                    className="ml-2 text-sm text-black underline underline-offset-4"
+                  >
+                    Crear ubicacion
+                  </Link>
+                </p>
+              )}
+
               <input type="hidden" value="action_make" name="action" />
             </Form>
           </div>

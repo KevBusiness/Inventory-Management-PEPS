@@ -43,11 +43,11 @@ const routes = [
     label: "Existencias",
     icon: <BsBoxes />,
   },
-  {
-    path: "/new/adjust-inventory",
-    label: "Ajustar Inventario",
-    icon: <HiAdjustmentsHorizontal />,
-  },
+  // {
+  //   path: "/new/adjust-inventory",
+  //   label: "Ajustar Inventario",
+  //   icon: <HiAdjustmentsHorizontal />,
+  // },
   {
     path: "/new/sale",
     label: "Nueva Venta",
@@ -112,7 +112,7 @@ export default function MainLayout({
                           route.path.split("/")[1]
                           ? "bg-blue-500 text-white hover:bg-blue-600 hover:text-white"
                           : null,
-                        "w-full h-10"
+                        "w-full h-10 disabled:bg-red-500"
                       )}
                       variant={"ghost"}
                     >

@@ -4,16 +4,19 @@ import {
   MetaFunction,
   redirect,
 } from "@remix-run/node";
-import { Form, useLoaderData, useSearchParams } from "@remix-run/react";
+import {
+  Form,
+  useLoaderData,
+  useSearchParams,
+  useSubmit,
+} from "@remix-run/react";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "~/hooks/use-toast";
 import { HiAdjustmentsHorizontal } from "react-icons/hi2";
 import { LiaSaveSolid } from "react-icons/lia";
 import { TbInvoice } from "react-icons/tb";
 import { ProgressBar } from "~/components/progressBar";
-import {
-  getAllTickets,
-  getTicket,
-} from "~/database/controller/general/tickets";
+import { getAllTickets } from "~/database/controller/general/tickets";
 import TicketCard from "~/components/ticket/ticket_card";
 import {
   Table,
@@ -36,10 +39,22 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
+import {
   getData,
   UpdateInventory,
 } from "~/database/controller/adjust-inventory.server";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { authenticator } from "~/services/auth.server";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 
@@ -100,9 +115,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return null;
 };
 
+type Data = {
+  action: string;
+  flowerId: number;
+  currentValue: number | null;
+  price: number | null;
+  value: number;
+  name: string;
+};
+
 export default function AdjustInventory() {
   const fetchData = useLoaderData<typeof loader>();
+  const [sensitiveData, setSensitiveData] = useState<Data[]>([]);
   const formRef = useRef(null);
+  const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
   const step = searchParams.get("step");
   const searchTerm = searchParams.get("search");
@@ -114,12 +140,56 @@ export default function AdjustInventory() {
       )
     : [];
 
+  const handleChanges = () => {
+    const formData = new FormData(
+      formRef.current as unknown as HTMLFormElement
+    );
+    const values = Object.fromEntries(formData);
+    const sortedData = Object.entries(values)
+      .filter(([key, value]) => value !== "")
+      .map((item) => ({
+        name: item[0].split("-")[0],
+        flowerId: +item[0].split("-")[1],
+        currentValue: +item[0].split("-")[3] || null,
+        price: +item[0].split("-")[4] || null,
+        value: +item[1],
+        action: item[0].split("-")[2],
+      }));
+    const sensitiveData = sortedData.filter((item) => {
+      if (item.action === "fresh") {
+        return item;
+      } else if (item.action === "wilted") {
+        return item;
+      }
+    });
+    setSensitiveData(sensitiveData);
+    return;
+    if (sortedData.length > 0) {
+    } else {
+      toast({
+        title: "Error",
+        description: "No se encuentran cambios",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmit = (data: any) => {
+    submit(
+      {
+        values: JSON.stringify(data),
+      },
+      { method: "post" }
+    );
+  };
+
   return (
     <div className="flex overflow-hidden h-full">
       <ProgressBar
         formRef={formRef}
         steps={steps}
         currentStep={parseInt(step!) || 0}
+        onSubmit={handleChanges}
       />
       {!step ? (
         <motion.div
@@ -188,7 +258,7 @@ export default function AdjustInventory() {
                       className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                     >
                       <Input
-                        name={`flower-${flower.id}-currentFresh`}
+                        name={`${flower.flowerBox.name}-${flower.id}-fresh-${flower.currentStockFresh}-${flower.current_price}`}
                         type="number"
                         placeholder={`Actual: ${flower.currentStockFresh}`}
                       />
@@ -201,7 +271,9 @@ export default function AdjustInventory() {
                       className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                     >
                       <Input
-                        name={`flower-${flower.id}-currentWilted`}
+                        name={`${flower.flowerBox.name}-${flower.id}-wilted-${
+                          flower.currentwiltedFlowers || 0
+                        }-${flower.flowerBox.currentWiltedPrice}`}
                         type="number"
                         placeholder={`Actual: ${
                           flower.currentwiltedFlowers || 0
@@ -215,7 +287,9 @@ export default function AdjustInventory() {
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                       className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                     >
-                      <Select name={`flower-${flower.id}-location`}>
+                      <Select
+                        name={`${flower.flowerBox.name}-${flower.id}-location`}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue
                             placeholder={`Actual: ${
@@ -252,7 +326,7 @@ export default function AdjustInventory() {
                       className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                     >
                       <Input
-                        name={`flower-${flower.id}-currenPrice`}
+                        name={`${flower.flowerBox.name}-${flower.id}-currenPrice`}
                         type="number"
                         placeholder={`Actual: ${formatToMXN(
                           flower.current_price
@@ -267,7 +341,7 @@ export default function AdjustInventory() {
                       className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                     >
                       <Input
-                        name={`flower-${flower.id}-currentMin`}
+                        name={`${flower.flowerBox.name}-${flower.id}-currentMin`}
                         type="number"
                         placeholder={`Actual: ${
                           flower.min || flower.flowerBox.min || "N/A"
@@ -279,8 +353,73 @@ export default function AdjustInventory() {
               </TableBody>
             </AnimatePresence>
           </Table>
+          {sensitiveData.length > 0 && (
+            <AlertDialogComponent sensitiveData={sensitiveData} />
+          )}
         </Form>
       ) : null}
     </div>
   );
 }
+
+const AlertDialogComponent = ({ sensitiveData }: { sensitiveData: Data[] }) => {
+  return (
+    <AlertDialog open>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Aviso</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se encontraron ajustes delicados, antes de proceder tienes que tener
+            en cuenta en que concepto/s sera/n procesado/s tu/s ajuste/s, por
+            favor revizalos con atencion y edita la configuracion en caso que no
+            sea asi.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Cantidad actual</TableHead>
+              <TableHead>Nueva cantidad</TableHead>
+              <TableHead>Ajuste / cantidad</TableHead>
+              <TableHead>Campo</TableHead>
+              <TableHead>Concepto</TableHead>
+              <TableHead>Validar</TableHead>
+            </TableRow>
+          </TableHeader>
+          {/* TODO: CONTINUAR ACQUI */}
+          <TableBody>
+            {sensitiveData.map((item, index) => (
+              <TableRow key={index}>
+                <TableCell>{item.name}</TableCell>
+                <TableCell className="text-center">
+                  {item.currentValue || 0}
+                </TableCell>
+                <TableCell className="text-center">{item.value}</TableCell>
+                <TableCell className="text-center">
+                  {item.value > (item.currentValue || 0)
+                    ? `+${item.value - (item.currentValue || 0)}`
+                    : !item.currentValue && item.value
+                    ? `+${item.value + (item.currentValue || 0)}`
+                    : `${item.value - (item.currentValue || 0)}`}
+                </TableCell>
+                <TableCell>
+                  {item.action === "fresh" ? "Fresca" : "Marchita"}
+                </TableCell>
+                <TableCell>
+                  {item.value > (item.currentValue || 0)
+                    ? "Ingresando"
+                    : "Vendiendo"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};

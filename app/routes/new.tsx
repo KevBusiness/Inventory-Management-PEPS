@@ -83,7 +83,7 @@ export default function New() {
               <SelectGroup>
                 <SelectItem value="sale">Nueva Venta</SelectItem>
                 <SelectItem value="ticket">Nueva Entrada</SelectItem>
-                <SelectItem value="adjust-inventory">Nuevo Ajuste</SelectItem>
+                {/* <SelectItem value="adjust-inventory">Nuevo Ajuste</SelectItem> */}
               </SelectGroup>
             </SelectContent>
           </Select>

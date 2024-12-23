@@ -31,8 +31,16 @@ export async function UpdateInventory(
         where: {
           id: flowerId,
         },
+        select: {
+          id: true,
+          initialAmount: true,
+          currentStockFresh: true,
+          currentwiltedFlowers: true,
+          current_price: true,
+        },
       });
       if (!flowerFound) throw new Error("Flower not found.");
+
       await db.$transaction([
         db.flower.update({
           where: {

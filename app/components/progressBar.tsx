@@ -1,9 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "~/lib/utils";
 import { Button } from "./ui/button";
-import { useLocation, useSearchParams, useSubmit } from "@remix-run/react";
+import { useLocation, useSearchParams } from "@remix-run/react";
 import NumberFlow from "@number-flow/react";
-import { toast } from "~/hooks/use-toast";
 
 interface ProgressBarProps {
   currentStep: number;
@@ -12,45 +11,20 @@ interface ProgressBarProps {
     icon: JSX.Element;
   }[];
   formRef?: React.MutableRefObject<any>;
+  onSubmit?: () => any;
 }
 
 export function ProgressBar({
   currentStep = 0,
   steps,
   formRef,
+  onSubmit,
 }: ProgressBarProps) {
-  const submit = useSubmit();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const path = location.pathname.split("/")[2];
   const selectedTicket =
     searchParams.get("current") || searchParams.get("ticket");
-
-  const handleSubmit = () => {
-    const formData = new FormData(formRef!.current);
-    const values = Object.fromEntries(formData);
-    const filterData = Object.entries(values)
-      .filter(([key, value]) => value !== "")
-      .map((item) => ({
-        action: item[0].split("-")[2],
-        flowerId: +item[0].split("-")[1],
-        value: +item[1],
-      }));
-    if (filterData.length > 0) {
-      submit(
-        {
-          values: JSON.stringify(filterData as any),
-        },
-        { method: "post" }
-      );
-    } else {
-      toast({
-        title: "Error",
-        description: "No se encuentran cambios",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <aside className="h-full w-56 bg-white rounded-r-lg px-5 pt-1 flex flex-col justify-between border-t shadow-md">
@@ -99,7 +73,7 @@ export function ProgressBar({
               disabled={Number(selectedTicket) > 0 ? false : true}
               onClick={() => {
                 if (formRef && currentStep === 1) {
-                  handleSubmit();
+                  onSubmit && onSubmit();
                 } else {
                   setSearchParams({
                     step: "1",
