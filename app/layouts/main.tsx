@@ -74,7 +74,7 @@ export default function MainLayout({
   user,
 }: {
   children: React.ReactNode;
-  user: User;
+  user?: User | null;
 }) {
   const location = useLocation();
   const { id } = useParams();
@@ -170,7 +170,7 @@ export default function MainLayout({
               <p>
                 Hola!
                 <span className="ml-2 underline underline-offset-8">
-                  {user.name} {user.lastname}
+                  {user?.name} {user?.lastname}
                 </span>
               </p>
               {/* TODO: ADD sistema of notifications */}

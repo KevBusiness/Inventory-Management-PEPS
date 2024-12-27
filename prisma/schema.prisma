@@ -162,6 +162,7 @@ model Product {
   name String
   quantity Int
   price Float?
+  picture String?
   uses saleTransaction[]
   to_use Int
   Flowers FlowerBox @relation(fields: [to_use], references: [id], onDelete: Cascade)
