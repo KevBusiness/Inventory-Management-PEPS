@@ -21,6 +21,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import NumberFlow from "@number-flow/react";
 import { BsClipboardCheck, BsBoxes } from "react-icons/bs";
 import { HiAdjustmentsHorizontal } from "react-icons/hi2";
+import { FaCashRegister } from "react-icons/fa";
 
 const routes = [
   {
@@ -66,7 +67,7 @@ const routes = [
   {
     path: "/pos",
     label: "Punto de venta",
-    icon: <CiCalculator2 />,
+    icon: <FaCashRegister />,
   },
 ];
 export default function MainLayout({
@@ -162,14 +163,14 @@ export default function MainLayout({
           </div>
         </aside>
         <div className="flex-1 overflow-y-auto pb-5">
-          <div className="flex items-center justify-between pt-5 px-5">
+          <div className="flex items-center justify-between pt-5 px-5 sticky top-0 bg-white shadow-sm border-b z-50 pb-2">
             <h2 className="text-2xl font-semibold">
               {capitalize(location.pathname.split("/")[1]).replace("-", " ")}
             </h2>
             <div className="flex items-center gap-5">
               <p>
                 Hola!
-                <span className="ml-2 underline underline-offset-8">
+                <span className="ml-2 underline decoration-wavy underline-offset-4">
                   {user?.name} {user?.lastname}
                 </span>
               </p>

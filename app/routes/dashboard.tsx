@@ -1,19 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MetaFunction, LoaderFunctionArgs, data } from "@remix-run/node";
-import db from "~/database/prisma.server";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, useNavigation } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 import { useToast } from "~/hooks/use-toast";
 import Layout from "~/layouts/main";
-import SalesChart from "~/components/charts/sales_chart";
 import FlowerChart from "~/components/charts/flower_chart";
 import { getData } from "~/database/controller/dashboard.server";
-import { Label } from "~/components/ui/label";
+import DatePickerWithRange from "~/components/date-with-range";
+import InfoCard from "~/components/cards/info_card";
+import ActivityCard from "~/components/cards/activity_card";
 import { Switch } from "~/components/ui/switch";
-import GeneralChart from "~/components/charts/general_chart";
-import { motion } from "framer-motion";
-import { MdOutlineMoveDown } from "react-icons/md";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { AnimatePresence, motion } from "framer-motion";
+import { DateRange } from "react-day-picker";
 
 export const meta: MetaFunction = () => {
   return [
@@ -38,68 +46,74 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function Dashboard() {
   const data = useLoaderData<typeof loader>();
-  const [onlySales, setonlySales] = useState(false);
-  const { toast } = useToast();
-  useEffect(() => {
-    if (data.message) {
-      toast({ title: "Exito", description: data.message });
-    }
-  }, [data]);
+  const [showInventory, setShowInventory] = useState(false);
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
 
   return (
     <Layout user={data.user}>
-      <p className="mt-2 text-sm pl-5">
-        Todo lo que necesitas en un solo lugar.
-      </p>
-      <div className="mx-5 my-5">
-        <div className="flex items-center space-x-2">
+      <div className="mt-5 mx-5 flex items-center gap-x-5">
+        <DatePickerWithRange date={date} handleDate={setDate} />
+        <div className="flex items-center gap-x-2">
           <Switch
-            id="chart-mode"
-            onCheckedChange={() => setonlySales(!onlySales)}
+            aria-description="show inventory charts"
+            id="mode-inventory"
+            checked={showInventory}
+            onCheckedChange={() => setShowInventory(!showInventory)}
           />
-          <Label htmlFor="chart-mode">Solo Ventas</Label>
+          <label htmlFor="mode-inventory">Ver Inventario</label>
         </div>
-        <div className="mt-5 border-b pb-5">
-          {onlySales ? (
-            <>
-              <p className="text-xl font-semibold">Grafica de ventas</p>
-              <SalesChart sales={data.sales} />
-            </>
-          ) : (
-            <>
-              <p className="text-xl font-semibold">Ventas por ticket</p>
-              <GeneralChart tickets={data.tickets} sales={data.sales} />
-            </>
-          )}
-        </div>
-        <div className="flex">
-          <motion.div
-            initial={{ opacity: 0 }} // Inicia invisible y desplazado hacia abajo
-            whileInView={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }} // Duración de la animación
-            className="w-1/2 h-[550px] mt-5 border bg-neutral-100 rounded-md p-2 overflow-hidden"
-          >
-            <p className="text-xl font-semibold mb-2">Distribucion de flores</p>
-            <FlowerChart flowers={data.flowers} />
-          </motion.div>
-          <div className="w-1/2 mt-5 p-2">
-            <h3 className="font-semibold text-xl">Actividad Reciente</h3>
-            <div className="flex flex-col py-2 gap-y-2">
-              <div className="h-24 p-2 border rounded-md flex flex-col justify-between gap-y-1">
-                <div className="flex flex-1 gap-x-5 items-center text-blue-700">
-                  <MdOutlineMoveDown size={20} />
-                  <p className="text-xl">Ajuste de inventario</p>
-                </div>
-                <p className="text-xs">
-                  Por: <span className="font-semibold">Marquis West</span>
-                </p>
-                <p className="text-xs">Fecha: Ajuste de inventario</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {showInventory && (
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Seleccione un ticket" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Fruits</SelectLabel>
+                    <SelectItem value="apple">Apple</SelectItem>
+                    <SelectItem value="banana">Banana</SelectItem>
+                    <SelectItem value="blueberry">Blueberry</SelectItem>
+                    <SelectItem value="grapes">Grapes</SelectItem>
+                    <SelectItem value="pineapple">Pineapple</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </motion.div>
+          </AnimatePresence>
+        )}
       </div>
+      <div className="mx-5 my-5 grid grid-cols-3 gap-x-5">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <InfoCard
+            index={i}
+            key={i}
+            mode={showInventory ? "inventory" : "sales"}
+          />
+        ))}
+      </div>
+      <section className="mx-5 grid grid-cols-2 gap-x-5">
+        <div className="p-2 h-[550px] overflow-y-auto space-y-5">
+          <p>Actividad Reciente</p>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <ActivityCard key={i} index={i} />
+          ))}
+        </div>
+        <div className="p-2 h-[550px]">
+          <FlowerChart flowers={data.flowers} />
+        </div>
+      </section>
+      <footer>
+        <p className="text-center text-muted-foreground">
+          Plataforma administradora modo: PRUEBA
+        </p>
+      </footer>
     </Layout>
   );
 }
