@@ -45,7 +45,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function CurrentStock() {
   const { user, stock } = useLoaderData<typeof loader>();
-  console.log(stock);
   return (
     <MainLayout user={user}>
       <p className="mt-2 text-sm pl-5">
