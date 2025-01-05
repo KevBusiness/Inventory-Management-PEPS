@@ -39,7 +39,30 @@ export async function getCurrentStock() {
         0
       ),
       min: item.min,
-      locations: item.flowers.join("location").length > 0 ? true : false,
+      locations: item.flowers.reduce(
+        (acc, flower) => {
+          const { location, currentStockFresh, currentwiltedFlowers } = flower;
+          if (location) {
+            const { name, id } = location;
+            const sortedName = name.trim();
+            const groupFound = acc.locations.find((group) => group.id === id);
+            if (groupFound) {
+              groupFound.amount +=
+                currentStockFresh + (currentwiltedFlowers || 0);
+            } else {
+              acc.locations.push({
+                id,
+                name: sortedName,
+                amount: currentStockFresh + (currentwiltedFlowers || 0),
+              });
+            }
+          }
+          return acc;
+        },
+        {
+          locations: [] as any[],
+        }
+      ).locations,
       total: item.flowers.reduce(
         (acc, flower) =>
           acc +

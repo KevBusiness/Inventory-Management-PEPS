@@ -13,8 +13,17 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/components/ui/sheet";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatToMXN } from "~/lib/utils";
+import { Button } from "~/components/ui/button";
 
 export const meta: MetaFunction = () => {
   return [
@@ -36,7 +45,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function CurrentStock() {
   const { user, stock } = useLoaderData<typeof loader>();
-
+  console.log(stock);
   return (
     <MainLayout user={user}>
       <p className="mt-2 text-sm pl-5">
@@ -135,9 +144,51 @@ export default function CurrentStock() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] hover:underline-offset-4 hover:underline hover:cursor-pointer"
                     >
-                      {item.locations ? "ver ubicaciones" : null}
+                      {item.locations ? (
+                        <Sheet>
+                          <SheetTrigger className="hover:underline hover:underline-offset-4">
+                            Ver Ubicaciones
+                          </SheetTrigger>
+                          <SheetContent>
+                            <SheetHeader>
+                              <SheetTitle>Ubicaciones actuales</SheetTitle>
+                              {/* <SheetDescription>
+                                This action cannot be undone. This will
+                                permanently delete your account and remove your
+                                data from our servers.
+                              </SheetDescription> */}
+                            </SheetHeader>
+                            <nav className="space-y-4 mt-6">
+                              {item.locations.length > 0 ? (
+                                item.locations.map((location) => (
+                                  <div
+                                    key={location.id}
+                                    className="border flex justify-between items-center p-4 bg-white rounded-lg shadow-md hover:scale-105 hover:shadow-xl transition-all ease-in-out duration-200"
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <span className="text-xl font-semibold text-gray-800 truncate">
+                                        {location.name}
+                                      </span>
+                                    </div>
+                                    <span className="text-md font-medium text-blue-600">
+                                      {location.amount}{" "}
+                                      <span className="text-xs text-gray-400">
+                                        Unidades
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-gray-500 text-center italic text-lg">
+                                  No se encontraron ubicaciones.
+                                </p>
+                              )}
+                            </nav>
+                          </SheetContent>
+                        </Sheet>
+                      ) : null}
                     </motion.td>
 
                     <motion.td
