@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { MetaFunction, LoaderFunctionArgs, data } from "@remix-run/node";
-import { useLoaderData, useNavigation } from "@remix-run/react";
+import {
+  useLoaderData,
+  useNavigation,
+  useSearchParams,
+} from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 import { useToast } from "~/hooks/use-toast";
 import Layout from "~/layouts/main";
 import FlowerChart from "~/components/charts/flower_chart";
-import { getData } from "~/database/controller/dashboard.server";
+import { getData } from "~/controllers/dashboard.server";
 import DatePickerWithRange from "~/components/date-with-range";
 import InfoCard from "~/components/cards/info_card";
 import ActivityCard from "~/components/cards/activity_card";
@@ -38,8 +42,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     failureRedirect: "/",
   });
   const session = await getSession(request.headers.get("Cookie"));
+  const fetchData = await getData();
   return data(
-    { user: user!, message: session.get("success"), ...(await getData()) },
+    { user: user!, message: session.get("success"), ...fetchData },
     { headers: { "Set-Cookie": await commitSession(session) } }
   );
 }
@@ -48,7 +53,9 @@ export default function Dashboard() {
   const data = useLoaderData<typeof loader>();
   const [showInventory, setShowInventory] = useState(false);
   const [date, setDate] = useState<DateRange | undefined>(undefined);
-
+  const [ticket, setTicket] = useState<number | null>(
+    data?.tickets[0].id || null
+  );
   return (
     <Layout user={data.user}>
       <div className="mt-5 mx-5 flex items-center gap-x-5">
@@ -57,8 +64,9 @@ export default function Dashboard() {
           <Switch
             aria-description="show inventory charts"
             id="mode-inventory"
-            checked={showInventory}
-            onCheckedChange={() => setShowInventory(!showInventory)}
+            onCheckedChange={(value) => {
+              setShowInventory(value);
+            }}
           />
           <label htmlFor="mode-inventory">Ver Inventario</label>
         </div>
@@ -70,18 +78,25 @@ export default function Dashboard() {
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
             >
-              <Select>
+              <Select
+                defaultValue={
+                  ticket ? ticket.toString() : data.tickets[0].id.toString()
+                }
+                onValueChange={(value) => setTicket(+value)}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Seleccione un ticket" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectLabel>Fruits</SelectLabel>
-                    <SelectItem value="apple">Apple</SelectItem>
-                    <SelectItem value="banana">Banana</SelectItem>
-                    <SelectItem value="blueberry">Blueberry</SelectItem>
-                    <SelectItem value="grapes">Grapes</SelectItem>
-                    <SelectItem value="pineapple">Pineapple</SelectItem>
+                    <SelectLabel>Tickets</SelectLabel>
+                    {data.tickets &&
+                      data.tickets.map((ticket) => (
+                        <SelectItem
+                          value={ticket.id.toString()}
+                          key={ticket.id}
+                        >{`Ticket ${ticket.id}`}</SelectItem>
+                      ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -90,13 +105,18 @@ export default function Dashboard() {
         )}
       </div>
       <div className="mx-5 my-5 grid grid-cols-3 gap-x-5">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <InfoCard
-            index={i}
-            key={i}
-            mode={showInventory ? "inventory" : "sales"}
-          />
-        ))}
+        {data?.chartsData &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <InfoCard
+              index={i}
+              key={i}
+              mode={showInventory ? "inventory" : "sales"}
+              data={
+                data.chartsData[showInventory ? "inventory" : "sales"].data[i]
+              }
+              ticket={ticket}
+            />
+          ))}
       </div>
       <section className="mx-5 grid grid-cols-2 gap-x-5">
         <div className="p-2 h-[550px] overflow-y-auto space-y-5">
@@ -106,7 +126,7 @@ export default function Dashboard() {
           ))}
         </div>
         <div className="p-2 h-[550px]">
-          <FlowerChart flowers={data.flowers} />
+          {data?.flowers && <FlowerChart flowers={data.flowers} />}
         </div>
       </section>
       <footer>

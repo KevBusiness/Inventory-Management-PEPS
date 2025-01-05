@@ -4,7 +4,7 @@ import {
   MetaFunction,
   redirect,
 } from "@remix-run/node";
-import { Form, useLoaderData, useNavigate } from "@remix-run/react";
+import { Form, useLoaderData, useNavigate, useSubmit } from "@remix-run/react";
 import db from "~/database/prisma.server";
 import { authenticator } from "~/services/auth.server";
 import MainLayout from "~/layouts/main";
@@ -108,6 +108,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function ProcessTicket() {
   const { user, ticketFound, message, folio } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const submit = useSubmit();
+
   useEffect(() => {
     if (message) {
       toast({ title: "Error", description: message, variant: "destructive" });
@@ -210,7 +212,20 @@ export default function ProcessTicket() {
                   <Button className="h-10" onClick={() => navigate(-1)}>
                     Volver a buscar
                   </Button>
-                  <Form method="PUT">
+                  <Form
+                    method="PUT"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const result = confirm(
+                        "Esto actualizara el inventario actual, estas de acuerdo?"
+                      );
+                      if (result) {
+                        submit(e.currentTarget, { method: "PUT" });
+                      } else {
+                        return;
+                      }
+                    }}
+                  >
                     <input type="hidden" value={folio} name="n_folio" />
                     <Button
                       type="submit"

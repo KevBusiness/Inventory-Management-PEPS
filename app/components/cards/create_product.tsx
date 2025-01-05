@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Form, useSubmit } from "@remix-run/react";
-import { formatToMXN } from "~/lib/utils";
+import { cn, formatToMXN } from "~/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -22,10 +22,12 @@ import { CiSquarePlus } from "react-icons/ci";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
+import { Delete, Plus, X } from "lucide-react";
 
 type Flower = {
   id: number;
   name: string;
+  select: boolean;
 };
 
 interface CreateProductProps {
@@ -34,10 +36,43 @@ interface CreateProductProps {
 
 export default function CreateProduct({ flowers }: CreateProductProps) {
   const submit = useSubmit();
+  const [flowersData, setFlowersData] = useState<Record<any, any>>({});
   const [flowersAmount, setFlowersAmount] = useState(1);
+
+  if (!flowers?.length) {
+    return null;
+  }
+
+  const selectFlower = (field: number, type: string, value: any) => {
+    setFlowersData((prevFlowersData) => ({
+      ...prevFlowersData,
+      [field]: {
+        ...prevFlowersData[field],
+        [type]: value,
+      },
+    }));
+  };
+
+  const sortedFlowers = flowers.map((flower) => {
+    // Verificar si el id de la flor existe en previousData
+    const existsInPreviousData = Object.values(flowersData).some(
+      (item) => item.id === flower.id
+    );
+
+    // Agregar la propiedad select: true si existe, de lo contrario false
+    return {
+      ...flower,
+      select: existsInPreviousData,
+    };
+  });
   return (
     <div>
-      <Sheet>
+      <Sheet
+        onOpenChange={() => {
+          setFlowersAmount(1);
+          setFlowersData({});
+        }}
+      >
         <SheetTrigger asChild>
           <button
             type="button"
@@ -60,7 +95,13 @@ export default function CreateProduct({ flowers }: CreateProductProps) {
             encType="multipart/form-data"
             onSubmit={(e) => {
               e.preventDefault();
-              submit(e.currentTarget);
+              const formData = new FormData(e.currentTarget);
+              const flowers = JSON.stringify(Object.values(flowersData));
+              formData.append("flowers", flowers);
+              submit(formData, {
+                method: "POST",
+                encType: "multipart/form-data",
+              });
               e.currentTarget.reset();
             }}
           >
@@ -96,73 +137,73 @@ export default function CreateProduct({ flowers }: CreateProductProps) {
                 required
               />
             </div>
-            <div className="space-y-1">
-              <Label
-                htmlFor="flowers_amount"
-                className="after:content-['*'] after:ml-0.5 after:text-red-500"
-              >
-                Cantidad de flores
-              </Label>
-              <Input
-                type="number"
-                id="flowers_amount"
-                className="h-12"
-                min={1}
-                defaultValue={1}
-                onChange={(e) => {
-                  if (e.target.value === "") {
-                    setFlowersAmount(1);
-                  } else {
-                    setFlowersAmount(parseInt(e.target.value));
-                  }
-                }}
-                required
-              />
-            </div>
-            {new Array(flowersAmount).fill(0).map((_, index) => (
-              <div key={index} className="space-y-4 border-b pb-4">
-                <div className="space-y-1">
-                  <Label
-                    htmlFor={`flower-${index + 1}`}
-                    className="after:content-['*'] after:ml-0.5 after:text-red-500"
+            {Array.from({ length: flowersAmount }).map((_, i) => (
+              <div key={i} className="space-y-4 border-b pb-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor={`flower-${i + 1}-id`}
+                      className="after:content-['*'] after:ml-0.5 after:text-red-500"
+                    >
+                      Flor a utilizar | Flor {i + 1}
+                    </Label>
+                    {i > 0 && (
+                      <X
+                        size={18}
+                        className="text-red-500 hover:cursor-pointer"
+                      />
+                    )}
+                  </div>
+                  <Select
+                    name={`flower-${i + 1}-id`}
+                    required
+                    onValueChange={(value) => {
+                      const [id, name] = value.split("-");
+                      selectFlower(i, "id", +id);
+                      selectFlower(i, "name", name);
+                    }}
                   >
-                    Flor a utilizar | Flor {index + 1}
-                  </Label>
-                  <Select name={`flower-${index + 1}`} required>
                     <SelectTrigger
                       className="w-full h-12"
-                      id={`flower-${index + 1}`}
+                      id={`flower-${i + 1}-id`}
                     >
-                      <SelectValue placeholder="ej: Rosas" />
+                      <SelectValue placeholder="Seleccione una flor" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
                         <SelectLabel>Flores</SelectLabel>
-                        {flowers &&
-                          flowers.map((flower) => (
-                            <SelectItem
-                              className="hover:bg-neutral-200/20"
-                              value={flower.id.toString()}
-                              key={flower.id}
-                            >
-                              {flower.name}
-                            </SelectItem>
-                          ))}
+                        {sortedFlowers.map((flower) => (
+                          <SelectItem
+                            disabled={flower.select}
+                            className="hover:bg-neutral-200/20"
+                            value={`${flower.id.toString()}-${flower.name}`}
+                            key={flower.id}
+                          >
+                            {flower.name}
+                          </SelectItem>
+                        ))}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
                   <Label
-                    htmlFor={`flower-${index + 1}_amount`}
+                    htmlFor={`flower-${i + 1}-amount`}
                     className="after:content-['*'] after:ml-0.5 after:text-red-500"
                   >
-                    Cantidad usada | Flor {index + 1}
+                    Cantidad usada | Flor {i + 1}
                   </Label>
                   <Input
                     type="number"
-                    id={`flower-${index + 1}_amount`}
-                    name={`flower-${index + 1}_amount`}
+                    id={`flower-${i + 1}-amount`}
+                    name={`flower-${i + 1}-amount`}
+                    onChange={(e) => {
+                      if (e.target.value === "") {
+                        selectFlower(i, "amount", 1);
+                      } else {
+                        selectFlower(i, "amount", +e.target.value);
+                      }
+                    }}
                     placeholder="ej: 24"
                     className="h-12"
                     required
@@ -170,6 +211,18 @@ export default function CreateProduct({ flowers }: CreateProductProps) {
                 </div>
               </div>
             ))}
+            <Button
+              type="button"
+              onClick={(e) => {
+                setFlowersAmount(flowersAmount + 1);
+                e.stopPropagation();
+              }}
+              className="w-full h-12 bg-gradient-to-r from-purple-400 to-purple-600 hover:ring-1 hover:ring-purple-600 transition ease-in"
+            >
+              <Plus />
+              Nueva flor
+            </Button>
+            <div className="space-y-1"></div>
             <div className="space-y-1">
               <Label
                 htmlFor="product_picture"

@@ -16,6 +16,7 @@ model User {
   role Role
   tickets Ticket[]
   outputs Output[]
+  transactions saleTransaction[]
   adjustmentInventory InventoryAdjustment[]
   notifications Notification[]
   seenNotifications NotificationView[]
@@ -82,7 +83,6 @@ model FlowerBox {
   currentWiltedPrice Float?
   locationId Int?
   flowers Flower[]
-  products Product[]
   location Location? @relation(fields: [locationId], references: [id])
   @@map("flowerBoxes")
 }
@@ -122,11 +122,13 @@ model saleTransaction {
   quantity Int
   quality Quality
   saleDate DateTime @default(now())
-  flowerId Int
-  outputId Int
+  flowerId Int?
+  outputId Int?
   productId Int?
-  flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
-  output Output @relation(fields: [outputId], references: [id])
+  createdBy Int?
+  user User? @relation(fields: [createdBy], references: [id])
+  flower Flower? @relation(fields: [flowerId], references: [id], onDelete: Cascade)
+  output Output? @relation(fields: [outputId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
   @@map("sale_transaction")
 }
@@ -135,6 +137,7 @@ enum Quality {
   Fresca
   Marchita
 }
+
 model adjustTransaction {
   id Int @id @default(autoincrement())
   price Float
@@ -160,12 +163,11 @@ enum AjustType {
 model Product {
   id Int @id @default(autoincrement())
   name String
-  quantity Int
-  price Float?
-  picture String?
-  uses saleTransaction[]
-  to_use Int
-  Flowers FlowerBox @relation(fields: [to_use], references: [id], onDelete: Cascade)
+  price Float
+  picture String
+  flowers String
+  sales saleTransaction[]
+  @@map("Products")
 }
 
 

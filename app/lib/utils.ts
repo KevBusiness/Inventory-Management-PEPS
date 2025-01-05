@@ -32,14 +32,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function GetPurchasedFlowers(data: Array<Flower>) {
-  return data.filter((flower) => flower.type !== "Venta");
-}
-
-export function GetFlowersSold(data: Array<Flower>) {
-  return data.filter((flower) => flower.type !== "Compra");
-}
-
 export function generateUniqueCode(): number {
   const timestamp = Date.now();
   const randomNum = Math.floor(Math.random() * 1000000);

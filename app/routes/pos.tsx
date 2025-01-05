@@ -10,7 +10,7 @@ import {
   unstable_createFileUploadHandler,
   unstable_composeUploadHandlers,
 } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useActionData, useLoaderData, useSubmit } from "@remix-run/react";
 import { authenticator } from "~/services/auth.server";
 import db from "~/database/prisma.server";
 import { Product } from "@prisma/client";
@@ -22,6 +22,8 @@ import { FaCashRegister } from "react-icons/fa";
 import MainLayout from "~/layouts/main";
 import CreateProduct from "~/components/cards/create_product";
 import { Input } from "~/components/ui/input";
+import { createSale } from "~/controllers/pos.server";
+import { toast } from "~/hooks/use-toast";
 
 export const meta: MetaFunction = () => {
   return [
@@ -34,33 +36,38 @@ export const meta: MetaFunction = () => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  let formData = await unstable_parseMultipartFormData(
-    request,
-    unstable_composeUploadHandlers(
-      unstable_createFileUploadHandler({
-        // Limit file upload to images
-        filter({ contentType }) {
-          return contentType.includes("image");
-        },
-        // Store the images in the public/img folder
-        directory: "./public/uploads",
-        // By default, `unstable_createFileUploadHandler` adds a number to the file
-        // names if there's another with the same name; by disabling it, we replace
-        // the old file
-        avoidFileConflicts: false,
-        // Use the actual filename as the final filename
-        file({ filename }) {
-          return filename;
-        },
-        // Limit the max size to 10MB
-        maxPartSize: 10 * 1024 * 1024,
-      }),
-      unstable_createMemoryUploadHandler()
-    )
-  );
-  switch (formData.get("action_type")) {
-    case "create_product":
-      const { product_name, product_price, product_flower, product_amount } =
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
+  const enctype = request.headers.get("Content-Type")?.split(";")[0];
+  let formData;
+  switch (enctype) {
+    case "multipart/form-data":
+      formData = await unstable_parseMultipartFormData(
+        request,
+        unstable_composeUploadHandlers(
+          unstable_createFileUploadHandler({
+            // Limit file upload to images
+            filter({ contentType }) {
+              return contentType.includes("image");
+            },
+            // Store the images in the public/img folder
+            directory: "./public/uploads",
+            // By default, `unstable_createFileUploadHandler` adds a number to the file
+            // names if there's another with the same name; by disabling it, we replace
+            // the old file
+            avoidFileConflicts: false,
+            // Use the actual filename as the final filename
+            file({ filename }) {
+              return filename;
+            },
+            // Limit the max size to 10MB
+            maxPartSize: 10 * 1024 * 1024,
+          }),
+          unstable_createMemoryUploadHandler()
+        )
+      );
+      const { product_name, product_price, flowers } =
         Object.fromEntries(formData);
       const product_picture = formData.get("product_picture") as File;
       const name_picture = product_picture?.name;
@@ -68,28 +75,33 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         await db.product.create({
           data: {
             name: product_name as string,
-            price: Number(product_price),
-            quantity: Number(product_amount),
+            price: +product_price,
+            flowers: flowers as string,
             picture: name_picture as string,
-            to_use: Number(product_flower),
           },
         });
+        return null;
       } catch (error) {
         console.log(error);
         return null;
       }
       break;
+    case "application/x-www-form-urlencoded":
+      formData = await request.formData();
+      const data = JSON.parse(formData.get("data") as string);
+      const resumen = await createSale(data, user!);
+      return resumen;
+      break;
     default:
       break;
   }
-  return null;
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
   try {
-    const user = await authenticator.isAuthenticated(request, {
-      failureRedirect: "/",
-    });
     const [flowers, products] = await db.$transaction([
       db.flowerBox.findMany({
         select: {
@@ -104,7 +116,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       select: false,
       amount: 0,
     }));
-    return { user, flowers, products: sortedProductsData };
+    const sortedFlowers = flowers.map((flower) => ({
+      ...flower,
+      select: false,
+    }));
+    return { user, flowers: sortedFlowers, products: sortedProductsData };
   } catch (error) {
     return null;
   }
@@ -117,9 +133,25 @@ interface ProductItemProps extends Product {
 
 export default function Pos() {
   const data = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const submit = useSubmit();
   const [sortedProductsData, setSortedProductsData] = useState<
     ProductItemProps[]
   >(data?.products || []);
+
+  useEffect(() => {
+    if (sortedProductsData.length !== data?.products.length) {
+      setSortedProductsData(data?.products || []);
+    }
+    if (actionData && actionData.length) {
+      printData(actionData);
+      setSortedProductsData(data?.products || []);
+      toast({
+        title: "Venta realizada!",
+        description: "La venta se realizo correctamente",
+      });
+    }
+  }, [data?.products, actionData]);
 
   const handleAddItem = (id: number) => {
     setSortedProductsData((prev) =>
@@ -153,6 +185,14 @@ export default function Pos() {
     );
   };
 
+  const handleSubmit = () => {
+    const selectItems = sortedProductsData.filter((item) => item.select);
+    const formData = new FormData();
+    formData.append("data", JSON.stringify(selectItems));
+    formData.append("action_type", "create_sale");
+    submit(formData, { method: "POST" });
+  };
+
   return (
     <MainLayout user={data?.user}>
       <p className="mt-2 text-sm pl-5">Punto de venta.</p>
@@ -182,8 +222,8 @@ export default function Pos() {
           )}
         </div>
         <div className="w-1/2 h-[620px] max-h-[620px] pt-2 flex flex-col justify-between">
-          <div className="h-[480px] w-full flex flex-col justify-between">
-            <div className="flex-1">
+          <div className="h-[480px] max-h-[480px] w-full flex flex-col justify-between">
+            <div className="h-full overflow-y-auto">
               <table className="table-fixed w-full">
                 <thead className="border-b">
                   <tr>
@@ -247,7 +287,6 @@ export default function Pos() {
                   </tbody>
                 ) : null}
               </table>
-
               {!sortedProductsData.filter((product) => product.select)
                 .length && (
                 <p className="text-muted-foreground text-center mt-10">
@@ -272,7 +311,7 @@ export default function Pos() {
           <div className="border-t flex items-center justify-between w-full flex-1">
             <button
               type="button"
-              onClick={() => handleResetCart()}
+              onClick={handleResetCart}
               className="hover:cursor-pointer w-44 h-12 p-2 text-sm text-white bg-red-500 hover:shadow-lg transition-all duration-150 ease-out rounded-md flex items-center justify-center gap-x-2"
             >
               <MdDelete size={28} />
@@ -280,6 +319,7 @@ export default function Pos() {
             </button>
             <button
               type="button"
+              onClick={handleSubmit}
               className="hover:cursor-pointer w-44 h-12 p-2 text-sm text-white bg-gradient-to-r from-green-500 to-green-600 border-2 border-green-300 ring-2 ring-green-500/20 hover:shadow-lg transition-all duration-150 ease-out rounded-md flex items-center justify-center gap-x-2"
             >
               <FaCashRegister size={25} />
@@ -370,4 +410,164 @@ const ProductItem = ({
       </motion.div>
     </AnimatePresence>
   );
+};
+
+const printData = (data: any[]) => {
+  // Verificar si hay datos
+  if (!data || data.length === 0) {
+    alert("No hay datos disponibles para imprimir.");
+    return;
+  }
+
+  // Crear una nueva ventana para imprimir
+  const ventana = window.open("", "", "width=800,height=600");
+
+  // Crear el contenido HTML para la impresión
+  const contenidoHTML = `
+      <html>
+        <head>
+          <title>Imprimir Datos</title>
+          <style>
+            /* Resetear márgenes y bordes */
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+
+            body {
+              font-family: 'Roboto', sans-serif;
+              background-color: #f7f7f7;
+              color: #333;
+              line-height: 1.6;
+            }
+
+            h1 {
+              text-align: center;
+              margin-bottom: 20px;
+              font-size: 24px;
+              color: #333;
+            }
+
+            /* Estilo para la tabla */
+            table {
+              width: 90%;
+              margin: 0 auto;
+              border-radius: 8px;
+              border-collapse: collapse;
+              background-color: #fff;
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            th, td {
+              padding: 12px 15px;
+              text-align: left;
+              font-size: 16px;
+            }
+
+            th {
+              background-color: #4CAF50;
+              color: #fff;
+              font-weight: bold;
+              text-transform: uppercase;
+              border-bottom: 2px solid #ddd;
+            }
+
+            td {
+              background-color: #f9f9f9;
+              border-bottom: 1px solid #ddd;
+            }
+
+            /* Efecto hover en las filas de la tabla */
+            tr:nth-child(even) td {
+              background-color: #f2f2f2;
+            }
+
+            tr:hover td {
+              background-color: #e8f7e7;
+            }
+
+            /* Detalles visuales */
+            .table-container {
+              padding: 20px;
+              text-align: left;
+            }
+
+            /* Diseño responsivo */
+            @media print {
+              body {
+                background-color: #fff;
+              }
+
+              .table-container {
+                padding: 0;
+                text-align: left;
+              }
+
+              h1 {
+                font-size: 28px;
+                margin-bottom: 10px;
+              }
+
+              table {
+                width: 100%;
+                box-shadow: none;
+                margin: 0;
+              }
+
+              th, td {
+                font-size: 14px;
+                padding: 10px 12px;
+              }
+            }
+
+            /* Estilo de la cabecera de la tabla cuando se imprime */
+            @media print {
+              th {
+                background-color: #333;
+                color: #fff;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="table-container">
+            <h1>Datos a Imprimir</h1>
+            <table>
+              <thead>
+                <tr>
+                  <th>Lote ID</th>
+                  <th>Nombre</th>
+                  <th>Cantidad usada</th>
+                  <th>Referencia</th>
+                  <th>Vendidos</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (item) => `
+                      <tr>
+                        <td>${item.loteId}</td>
+                        <td>${item.name}</td>
+                        <td>${item.amount}</td>
+                        <td>${item.product}</td>
+                        <td>${item.sellAmount}</td>
+                      </tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </body>
+      </html>
+    `;
+
+  // Escribir el contenido en la nueva ventana
+  ventana?.document.write(contenidoHTML);
+  ventana?.document.close();
+
+  // Abrir el cuadro de impresión y luego cerrar la ventana
+  ventana?.print();
+  ventana?.close();
 };
