@@ -44,11 +44,11 @@ const routes = [
     label: "Existencias",
     icon: <BsBoxes />,
   },
-  // {
-  //   path: "/new/adjust-inventory",
-  //   label: "Ajustar Inventario",
-  //   icon: <HiAdjustmentsHorizontal />,
-  // },
+  {
+    path: "/new/adjust-inventory",
+    label: "Ajustar Inventario",
+    icon: <HiAdjustmentsHorizontal />,
+  },
   {
     path: "/new/sale",
     label: "Nueva Venta",

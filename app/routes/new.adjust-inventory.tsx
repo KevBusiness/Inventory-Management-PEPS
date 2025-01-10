@@ -54,9 +54,12 @@ import {
   getData,
   UpdateInventory,
 } from "~/database/controller/adjust-inventory.server";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { authenticator } from "~/services/auth.server";
 import { commitSession, getSession } from "~/services/alerts.session.server";
+import { Checkbox } from "~/components/ui/checkbox";
+import { l } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
+import { extname } from "node:path";
 
 type AdjustField = {
   action: string;
@@ -115,18 +118,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return null;
 };
 
-type Data = {
-  action: string;
-  flowerId: number;
-  currentValue: number | null;
-  price: number | null;
-  value: number;
+interface FlowerData {
+  id: number;
   name: string;
-};
+  oldFresh: number;
+  oldWilted: number;
+  currentFresh: number | null;
+  currentWilted: number | null;
+  location: string | null;
+  oldAlert: number;
+  currentAlert: number | null;
+}
+
+interface SensitiveData extends FlowerData {
+  concept: string;
+  adjustment: number;
+  incorrect: boolean;
+}
 
 export default function AdjustInventory() {
   const fetchData = useLoaderData<typeof loader>();
-  const [sensitiveData, setSensitiveData] = useState<Data[]>([]);
+  const [sensitiveData, setSensitiveData] = useState<SensitiveData[]>([]);
+  const [issuesData, setIssuesData] = useState<any[]>([]);
   const formRef = useRef(null);
   const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -140,56 +153,145 @@ export default function AdjustInventory() {
       )
     : [];
 
-  const handleChanges = () => {
+  const handleSubmit = () => {
     const formData = new FormData(
       formRef.current as unknown as HTMLFormElement
     );
     const values = Object.fromEntries(formData);
-    const sortedData = Object.entries(values)
-      .filter(([key, value]) => value !== "")
-      .map((item) => ({
-        name: item[0].split("-")[0],
-        flowerId: +item[0].split("-")[1],
-        currentValue: +item[0].split("-")[3] || null,
-        price: +item[0].split("-")[4] || null,
-        value: +item[1],
-        action: item[0].split("-")[2],
-      }));
-    const sensitiveData = sortedData.filter((item) => {
-      if (item.action === "fresh") {
-        return item;
-      } else if (item.action === "wilted") {
-        return item;
-      }
-    });
-    setSensitiveData(sensitiveData);
-    return;
-    if (sortedData.length > 0) {
-    } else {
+    const filteredData = Object.entries(values).filter(
+      ([key, value]) => value !== ""
+    );
+    if (!filteredData.length) {
       toast({
         title: "Error",
-        description: "No se encuentran cambios",
+        description: "No existen datos ingresados",
         variant: "destructive",
       });
+      return;
     }
+    const groupedData = Object.entries(values).reduce(
+      (acc: any, [key, quantity]) => {
+        // Realizar el split del primer valor para obtener id, nombre, tipo y oldQuantity
+        const [id, name, type, oldQuantity] = key.split("-");
+
+        // Convertir la cantidad actual
+        const currentQuantity = parseInt(quantity as string, 10);
+
+        // Si no existe una entrada para este id, inicializamos el objeto
+        if (!acc[id]) {
+          acc[id] = {
+            id: parseInt(id, 10),
+            name: name,
+            oldFresh: null,
+            oldWilted: null,
+            currentFresh: null,
+            currentWilted: null,
+            location: null,
+            oldAlert: null,
+            currentAlert: null,
+          };
+        }
+
+        // Si el tipo es 'fresh', actualizamos oldFresh y currentFresh
+        if (type === "fresh") {
+          acc[id].oldFresh = parseInt(oldQuantity, 10); // Asignar oldQuantity a oldFresh
+          acc[id].currentFresh = currentQuantity || null; // Asignar cantidad actual a currentFresh
+        }
+        // Si el tipo es 'wilted', actualizamos oldWilted y currentWilted
+        else if (type === "wilted") {
+          acc[id].oldWilted = parseInt(oldQuantity, 10); // Asignar oldQuantity a oldWilted
+          acc[id].currentWilted = currentQuantity || null; // Asignar cantidad actual a currentWilted
+        }
+        // Si el tipo es 'location', actualizamos location
+        else if (type === "location") {
+          acc[id].location = currentQuantity || null; // Asignar location
+        }
+        // Si el tipo es 'currentMin', actualizamos oldAlert y currentAlert
+        else if (type === "currentMin") {
+          acc[id].oldAlert = parseInt(oldQuantity, 10); // Asignar oldQuantity a oldAlert
+          acc[id].currentAlert = currentQuantity || null; // Asignar cantidad actual a currentAlert
+        }
+        return acc;
+      },
+      {}
+    );
+    const result = Object.values(groupedData as Record<number, FlowerData>)
+      .filter(
+        (item) =>
+          item.currentAlert !== null ||
+          item.currentFresh !== null ||
+          item.currentWilted !== null ||
+          item.location !== null
+      )
+      .map((item) => {
+        let concept = "Ninguno";
+        let adjustment = 0;
+
+        if (item.currentWilted === null && item.currentFresh) {
+          adjustment = item.currentFresh - item.oldFresh;
+          concept = "Vendiendo";
+        }
+        if (
+          item.oldWilted < item.oldFresh &&
+          item.currentFresh !== null &&
+          item.currentWilted !== null
+        ) {
+          const total = item.oldFresh + item.oldWilted;
+          if (item.currentFresh + item.currentWilted === total) {
+            adjustment = 0;
+            concept = "De frescas a marchitas";
+          } else {
+            const remainingFresh =
+              item.currentWilted + item.currentFresh - total;
+            adjustment = remainingFresh;
+            concept = "Vendiendo";
+          }
+        }
+        return { concept, adjustment, incorrect: false, ...item };
+      }) as SensitiveData[];
+    const invalidData = result.filter((item: any) => {
+      // Verificar que `currentFresh` sea mayor que `oldFresh` y que `currentWilted` o `currentAlert` no sean mayores que sus respectivas propiedades
+      return (
+        item.currentFresh > item.oldFresh || // `currentFresh` debe ser mayor que `oldFresh`
+        item.currentWilted > item.oldFresh || // `currentWilted` debe ser mayor que `oldWilted`
+        item.currentAlert > item.oldFresh // `currentAlert` debe ser mayor que `oldAlert`
+      );
+    });
+    if (invalidData.length > 0) {
+      toast({
+        title: "Error",
+        description:
+          "Ingresaste mas unidades de las que dispones en una o varias flores",
+        variant: "destructive",
+      });
+      return;
+    }
+    const sensitiveData = result.filter((item: any) => {
+      return item.currentFresh > 0 || item.currentWilted > 0;
+    });
+    if (sensitiveData.length > 0) {
+      setSensitiveData(sensitiveData);
+      return;
+    }
+    console.log("No hay datos sensibles", result);
+    return;
   };
 
-  const handleSubmit = (data: any) => {
-    submit(
-      {
-        values: JSON.stringify(data),
-      },
-      { method: "post" }
+  const handleCorrect = (id: number, value: boolean) => {
+    setSensitiveData((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, incorrect: value } : item
+      )
     );
   };
 
   return (
-    <div className="flex overflow-hidden h-full">
+    <div className="flex overflow-hidden overflow-x-auto h-full">
       <ProgressBar
         formRef={formRef}
         steps={steps}
         currentStep={parseInt(step!) || 0}
-        onSubmit={handleChanges}
+        onSubmit={handleSubmit}
       />
       {!step ? (
         <motion.div
@@ -217,207 +319,273 @@ export default function AdjustInventory() {
           </AnimatePresence>
         </motion.div>
       ) : !Array.isArray(fetchData) ? (
-        <Form ref={formRef} className="p-5 w-full">
-          <Table className="border-collapse bg-white rounded-md">
-            <TableCaption>
-              Ticket {fetchData?.ticket?.id} | Ajuste de inventario
-            </TableCaption>
-            <TableHeader className="h-full">
-              <TableRow className="sticky top-0">
-                <TableHead className="w-[150px]">Tipo De Flor</TableHead>
-                <TableHead className="w-[150px]">Cantidad Fresca</TableHead>
-                <TableHead className="w-[150px]">Cantidad Marchita</TableHead>
-                <TableHead className="w-[180px]">Ubicacion</TableHead>
-                {/* <TableHead className="w-[180px]">Precio</TableHead> */}
-                <TableHead className="w-[150px]">Alertar en:</TableHead>
-              </TableRow>
-            </TableHeader>
-            <AnimatePresence>
-              <TableBody>
-                {fetchData?.ticket?.flowers.map((flower, index) => (
-                  <TableRow
-                    className={cn(
-                      "odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100"
-                    )}
-                    key={index}
-                  >
-                    <motion.td
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+        <div className="overflow-x-auto w-full">
+          <Form ref={formRef} className="p-5 sm:w-[110vw] lg:w-full">
+            <Table className="border-collapse bg-white rounded-md w-full">
+              <TableCaption>
+                Ticket {fetchData?.ticket?.id} | Ajuste de inventario
+              </TableCaption>
+              <TableHeader className="h-full">
+                <TableRow className="sticky top-0">
+                  <TableHead className="w-[150px]">Tipo De Flor</TableHead>
+                  <TableHead className="w-[150px]">Cantidad Fresca</TableHead>
+                  <TableHead className="w-[150px]">Cantidad Marchita</TableHead>
+                  <TableHead className="w-[180px]">Ubicacion</TableHead>
+                  {/* <TableHead className="w-[180px]">Precio</TableHead> */}
+                  <TableHead className="w-[150px]">Alertar en:</TableHead>
+                </TableRow>
+              </TableHeader>
+              <AnimatePresence>
+                <TableBody>
+                  {fetchData?.ticket?.flowers.map((flower, index) => (
+                    <TableRow
+                      className={cn(
+                        "odd:bg-white even:bg-neutral-50 even:hover:bg-neutral-100"
+                      )}
+                      key={index}
                     >
-                      {flower.flowerBox.name}
-                    </motion.td>
-                    <motion.td
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                    >
-                      <Input
-                        name={`${flower.flowerBox.name}-${flower.id}-fresh-${flower.currentStockFresh}-${flower.current_price}`}
-                        type="number"
-                        placeholder={`Actual: ${flower.currentStockFresh}`}
-                      />
-                    </motion.td>
-                    <motion.td
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                    >
-                      <Input
-                        name={`${flower.flowerBox.name}-${flower.id}-wilted-${
-                          flower.currentwiltedFlowers || 0
-                        }-${flower.flowerBox.currentWiltedPrice}`}
-                        type="number"
-                        placeholder={`Actual: ${
-                          flower.currentwiltedFlowers || 0
-                        }`}
-                      />
-                    </motion.td>
-                    <motion.td
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                    >
-                      <Select
-                        name={`${flower.flowerBox.name}-${flower.id}-location`}
+                      <motion.td
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue
-                            placeholder={`Actual: ${
-                              flower.location?.name ||
-                              flower.flowerBox.location?.name ||
-                              "No especificado"
-                            }`}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectLabel>Ubicaciones disponibles</SelectLabel>
-                            {fetchData.locations
-                              ?.filter(
-                                (location) => location.id !== flower.locationId
-                              )
-                              .map((location, index) => (
-                                <SelectItem
-                                  value={location.id.toString()}
-                                  key={index}
-                                >
-                                  {location.name}
-                                </SelectItem>
-                              ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </motion.td>
-                    {/* <motion.td
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                    >
-                      <Input
-                        name={`${flower.flowerBox.name}-${flower.id}-currenPrice`}
-                        type="number"
-                        placeholder={`Actual: ${formatToMXN(
-                          flower.current_price
-                        )}`}
-                      />
-                    </motion.td> */}
-                    <motion.td
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                    >
-                      <Input
-                        name={`${flower.flowerBox.name}-${flower.id}-currentMin`}
-                        type="number"
-                        placeholder={`Actual: ${
-                          flower.min || flower.flowerBox.min || "N/A"
-                        }`}
-                      />
-                    </motion.td>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </AnimatePresence>
-          </Table>
-          {sensitiveData.length > 0 && (
-            <AlertDialogComponent sensitiveData={sensitiveData} />
-          )}
-        </Form>
+                        {flower.flowerBox.name}
+                      </motion.td>
+                      <motion.td
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                      >
+                        <Input
+                          className="invalid:border-red-500 invalid:focus:ring-red-500 valid:placeholder-shown:border-neutral-200 valid:placeholder-shown:focus:ring-blue-500 valid:border-blue-500 valid:focus:ring-blue-500  peer"
+                          name={`${flower.id}-${flower.flowerBox.name}-fresh-${flower.currentStockFresh}`}
+                          type="number"
+                          placeholder={`Actual: ${flower.currentStockFresh}`}
+                          max={flower.currentStockFresh}
+                        />
+                        <p className="mt-2 hidden peer-invalid:block text-pink-600 text-xs">
+                          La cantidad no puede ser mayor ala actual.
+                        </p>
+                      </motion.td>
+                      <motion.td
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                      >
+                        <Input
+                          className="invalid:border-red-500 invalid:focus:ring-red-500 valid:placeholder-shown:border-neutral-200 valid:placeholder-shown:focus:ring-blue-500 valid:border-blue-500 valid:focus:ring-blue-500  peer"
+                          name={`${flower.id}-${flower.flowerBox.name}-wilted-${
+                            flower.currentwiltedFlowers || 0
+                          }`}
+                          type="number"
+                          placeholder={`Actual: ${
+                            flower.currentwiltedFlowers || 0
+                          }`}
+                          max={flower.currentStockFresh}
+                        />
+                        <p className="mt-2 hidden peer-invalid:block text-pink-600 text-xs">
+                          La cantidad no puede ser mayor ala cantidad fresca.
+                        </p>
+                      </motion.td>
+                      <motion.td
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                      >
+                        <Select
+                          name={`${flower.id}-${flower.flowerBox.name}-location`}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={`Actual: ${
+                                flower.location?.name ||
+                                flower.flowerBox.location?.name ||
+                                "No especificado"
+                              }`}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>Ubicaciones disponibles</SelectLabel>
+                              {fetchData.locations
+                                ?.filter(
+                                  (location) =>
+                                    location.id !== flower.locationId
+                                )
+                                .map((location, index) => (
+                                  <SelectItem
+                                    value={location.id.toString()}
+                                    key={index}
+                                  >
+                                    {location.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </motion.td>
+                      <motion.td
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className="p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
+                      >
+                        <Input
+                          className="invalid:border-red-500 invalid:focus:ring-red-500 valid:placeholder-shown:border-neutral-200 valid:placeholder-shown:focus:ring-blue-500 valid:border-blue-500 valid:focus:ring-blue-500  peer"
+                          name={`${flower.id}-${
+                            flower.flowerBox.name
+                          }-currentMin-${flower.min || flower.flowerBox.min}`}
+                          type="number"
+                          placeholder={`Actual: ${
+                            flower.min || flower.flowerBox.min || "N/A"
+                          }`}
+                          max={flower.currentStockFresh}
+                        />
+                        <p className="mt-2 hidden peer-invalid:block text-pink-600 text-xs">
+                          La cantidad no puede ser mayor al del stock.
+                        </p>
+                      </motion.td>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </AnimatePresence>
+            </Table>
+            {sensitiveData.length > 0 && (
+              <AlertDialogComponent
+                sensitiveData={sensitiveData}
+                handleCorrect={handleCorrect}
+              />
+            )}
+          </Form>
+        </div>
       ) : null}
     </div>
   );
 }
-
-const AlertDialogComponent = ({ sensitiveData }: { sensitiveData: Data[] }) => {
+const AlertDialogComponent = ({
+  sensitiveData,
+  handleCorrect,
+}: {
+  sensitiveData: SensitiveData[];
+  handleCorrect: (id: number, value: boolean) => void;
+}) => {
   return (
     <AlertDialog open>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Aviso</AlertDialogTitle>
           <AlertDialogDescription>
-            Se encontraron ajustes delicados, antes de proceder tienes que tener
-            en cuenta en que concepto/s sera/n procesado/s tu/s ajuste/s, por
-            favor revizalos con atencion y edita la configuracion en caso que no
-            sea asi.
+            Se encontraron ajustes delicados. Antes de proceder, debes tener en
+            cuenta en qué concepto/s será/n procesado/s tu/s ajuste/s. Por
+            favor, revísalos con atención y edita la configuración en caso de
+            que no sea así.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Cantidad actual</TableHead>
-              <TableHead>Nueva cantidad</TableHead>
-              <TableHead>Ajuste / cantidad</TableHead>
-              <TableHead>Campo</TableHead>
+              <TableHead>Flor</TableHead>
+              <TableHead>Cantidad Fresca Actual</TableHead>
+              <TableHead>Cantidad Marchita Actual</TableHead>
+              <TableHead>Nueva Cantidad Fresca</TableHead>
+              <TableHead>Nueva Cantidad Marchita</TableHead>
+              <TableHead>Ajuste / Cantidad</TableHead>
               <TableHead>Concepto</TableHead>
-              <TableHead>Validar</TableHead>
+              <TableHead>Marca si es incorrecto</TableHead>
             </TableRow>
           </TableHeader>
-          {/* TODO: CONTINUAR ACQUI */}
+
           <TableBody>
             {sensitiveData.map((item, index) => (
               <TableRow key={index}>
                 <TableCell>{item.name}</TableCell>
                 <TableCell className="text-center">
-                  {item.currentValue || 0}
+                  {item.oldFresh} Unidades
                 </TableCell>
-                <TableCell className="text-center">{item.value}</TableCell>
                 <TableCell className="text-center">
-                  {item.value > (item.currentValue || 0)
-                    ? `+${item.value - (item.currentValue || 0)}`
-                    : !item.currentValue && item.value
-                    ? `+${item.value + (item.currentValue || 0)}`
-                    : `${item.value - (item.currentValue || 0)}`}
+                  {item.oldWilted} Unidades
                 </TableCell>
-                <TableCell>
-                  {item.action === "fresh" ? "Fresca" : "Marchita"}
+                <TableCell className="text-center">
+                  {item.currentFresh !== null
+                    ? `${item.currentFresh} Unidades`
+                    : "Sin cambios"}{" "}
                 </TableCell>
+                <TableCell className="text-center">
+                  {item.currentWilted !== null
+                    ? `${item.currentWilted} Unidades`
+                    : "Sin cambios"}{" "}
+                </TableCell>
+                <TableCell className="text-center">{item.adjustment}</TableCell>
+                <TableCell>{item.concept}</TableCell>
                 <TableCell>
-                  {item.value > (item.currentValue || 0)
-                    ? "Ingresando"
-                    : "Vendiendo"}
+                  <div className="flex justify-center">
+                    <Checkbox
+                      onCheckedChange={(value) =>
+                        handleCorrect(item.id, value as boolean)
+                      }
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction>Continue</AlertDialogAction>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction>Continuar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+const FixIssuesDialog = ({ issues }: { issues: any[] }) => {
+  return (
+    <AlertDialog open>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Corregir incorrecciones</AlertDialogTitle>
+          <AlertDialogDescription>
+            Algunos datos los marcastes como incorrectos, por favor ingrese su
+            razon.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Flor</TableHead>
+              <TableHead>Cantidad Fresca Actual</TableHead>
+              <TableHead>Cantidad Marchita Actual</TableHead>
+              <TableHead>Nueva Cantidad Fresca</TableHead>
+              <TableHead>Nueva Cantidad Marchita</TableHead>
+              <TableHead>Ajuste / Cantidad</TableHead>
+              <TableHead>Concepto</TableHead>
+              <TableHead>Marca si es incorrecto</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            <TableRow>
+              <TableCell>1</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction>Continuar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

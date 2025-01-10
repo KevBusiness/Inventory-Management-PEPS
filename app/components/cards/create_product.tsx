@@ -40,7 +40,7 @@ export default function CreateProduct({ flowers }: CreateProductProps) {
   const [flowersAmount, setFlowersAmount] = useState(1);
 
   if (!flowers?.length) {
-    return null;
+    return "Para crear productos, se necesitan flores.";
   }
 
   const selectFlower = (field: number, type: string, value: any) => {

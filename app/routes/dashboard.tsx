@@ -54,22 +54,29 @@ export default function Dashboard() {
   const [showInventory, setShowInventory] = useState(false);
   const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [ticket, setTicket] = useState<number | null>(
-    data?.tickets[0].id || null
+    data?.tickets[0]?.id || null
   );
+
   return (
     <Layout user={data.user}>
       <div className="mt-5 mx-5 flex items-center gap-x-5">
-        <DatePickerWithRange date={date} handleDate={setDate} />
-        <div className="flex items-center gap-x-2">
-          <Switch
-            aria-description="show inventory charts"
-            id="mode-inventory"
-            onCheckedChange={(value) => {
-              setShowInventory(value);
-            }}
-          />
-          <label htmlFor="mode-inventory">Ver Inventario</label>
-        </div>
+        {data.tickets.length > 0 &&
+        data.chartsData.sales.data.length > 0 &&
+        data.chartsData.inventory.data.length > 0 ? (
+          <DatePickerWithRange date={date} handleDate={setDate} />
+        ) : null}
+        {data.tickets.length > 0 && (
+          <div className="flex items-center gap-x-2">
+            <Switch
+              aria-description="show inventory charts"
+              id="mode-inventory"
+              onCheckedChange={(value) => {
+                setShowInventory(value);
+              }}
+            />
+            <label htmlFor="mode-inventory">Ver Inventario</label>
+          </div>
+        )}
         {showInventory && (
           <AnimatePresence>
             <motion.div
@@ -90,7 +97,7 @@ export default function Dashboard() {
                 <SelectContent>
                   <SelectGroup>
                     <SelectLabel>Tickets</SelectLabel>
-                    {data.tickets &&
+                    {data.tickets.length > 0 &&
                       data.tickets.map((ticket) => (
                         <SelectItem
                           value={ticket.id.toString()}
