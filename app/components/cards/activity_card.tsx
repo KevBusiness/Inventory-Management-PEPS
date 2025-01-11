@@ -1,6 +1,18 @@
+import { Notification, User } from "@prisma/client";
 import { AnimatePresence, motion } from "framer-motion";
+import { getTimeElapsed } from "~/lib/utils";
 
-export default function ActivityCard({ index }: { index: number }) {
+interface Data extends Notification {
+  user: User;
+}
+
+export default function ActivityCard({
+  index,
+  data,
+}: {
+  index: number;
+  data: Data;
+}) {
   return (
     <AnimatePresence>
       <motion.div
@@ -12,14 +24,16 @@ export default function ActivityCard({ index }: { index: number }) {
       >
         <div className="flex justify-between items-center">
           <h1 className="text-sm font-semibold text-blue-500">
-            Ajuste de inventario
+            {data.concept}
           </h1>
-          <span className="text-sm font-semibold">Hace 5 minutos</span>
+          <span className="text-sm font-semibold">
+            {getTimeElapsed(data.createdAt)}
+          </span>
         </div>
+        <p className="text-sm">{data.activity}</p>
         <p className="text-sm">
-          Se ha registrado una nueva compra de 5 productos.
+          Realizada por {data.user.name} {data.user.lastname}
         </p>
-        <p className="text-sm">Realizada por Kevin Felix</p>
       </motion.div>
     </AnimatePresence>
   );

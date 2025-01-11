@@ -25,11 +25,11 @@ import { GiFlowerPot } from "react-icons/gi";
 import { LiaSaveSolid } from "react-icons/lia";
 import { TbInvoice } from "react-icons/tb";
 import { commitSession, getSession } from "~/services/alerts.session.server";
-import { F } from "node_modules/@faker-js/faker/dist/airline-BLb3y-7w";
 import {
   getAllTickets,
   getTicket,
 } from "~/database/controller/general/tickets";
+import { createIndividualSale } from "~/controllers/outputs.server";
 
 const steps = [
   { label: "Seleccionar Ticket", icon: <TbInvoice /> },
@@ -64,79 +64,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const ticket = formData.get("ticket");
   const flowers = JSON.parse(formData.get("flowers") as string);
-  const output = await db.output.create({
-    data: {
-      createdBy: user?.id!,
-      ticketId: Number(ticket!),
-      total: 0,
-    },
-  });
-  flowers.forEach(async (flower: UpdatedFlowers) => {
-    const flower_updated = await db.flower.update({
-      where: {
-        id: flower.id,
-      },
-      data: {
-        currentStockFresh: {
-          decrement: flower.type === "fresh" ? flower.value : 0,
-        },
-        currentwiltedFlowers: {
-          decrement: flower.type === "wilted" ? flower.value : 0,
-        },
-      },
-    });
-    await db.saleTransaction.create({
-      data: {
-        flowerId: flower_updated.id,
-        price:
-          flower.type === "fresh" ? flower_updated.current_price : flower.price,
-        quantity: flower.value,
-        quality: flower.type === "fresh" ? "Fresca" : "Marchita",
-        outputId: output.id,
-      },
-    });
-  });
-  await db.output.update({
-    where: {
-      id: output.id,
-    },
-    data: {
-      total: flowers.reduce(
-        (acc: number, flower: UpdatedFlowers) =>
-          acc + flower.value * flower.price,
-        0
-      ),
-    },
-  });
-  const ticketFound = await db.ticket.findUnique({
-    where: {
-      id: +ticket!,
-    },
-    include: {
-      flowers: {
-        select: {
-          currentStockFresh: true,
-          currentwiltedFlowers: true,
-        },
-      },
-    },
-  });
-  if (
-    ticketFound?.flowers.reduce(
-      (acc, flower) =>
-        acc + (flower.currentStockFresh + (flower.currentwiltedFlowers || 0)),
-      0
-    ) === 0
-  ) {
-    await db.ticket.update({
-      where: {
-        id: ticketFound.id,
-      },
-      data: {
-        status: "Agotado",
-      },
-    });
-  }
+  await createIndividualSale(flowers, ticket as string, user!);
   session.flash("success", "La venta ha sido añadida correctamente.");
   return redirect("/dashboard", {
     headers: {

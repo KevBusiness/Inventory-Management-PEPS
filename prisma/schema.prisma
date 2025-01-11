@@ -65,8 +65,7 @@ model InventoryAdjustment {
   id Int @id @default(autoincrement())
   createdBy Int
   ticketId Int
-  settings adjustTransaction[]
-  total Float
+  adjusts adjustTransaction[]
   createdAt DateTime @default(now())
   user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   @@map("inventory_adjustments")
@@ -140,10 +139,8 @@ enum Quality {
 
 model adjustTransaction {
   id Int @id @default(autoincrement())
-  price Float
-  currentStockFresh Int?
-  currentwiltedFlowers Int?
-  type AjustType?
+  amount Int
+  type String
   total Float
   reason String?
   adjustDate DateTime @default(now())
@@ -152,12 +149,6 @@ model adjustTransaction {
   flower Flower @relation(fields: [flowerId], references: [id], onDelete: Cascade)
   inventory InventoryAdjustment @relation(fields: [adjustInventoryId], references: [id])
   @@map("adjust_transaction")
-}
-
-enum AjustType {
-  Entrada
-  Salida
-  Perdida
 }
 
 model Product {
@@ -183,6 +174,7 @@ model FlowerHistory {
 
 model Notification {
   id Int @id @default(autoincrement())
+  concept String
   activity String
   createdAt DateTime @default(now())
   createdBy Int

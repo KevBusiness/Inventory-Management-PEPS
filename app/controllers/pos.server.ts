@@ -1,5 +1,6 @@
 import { Flower, User } from "@prisma/client";
 import db from "~/database/prisma.server";
+import { formatToMXN } from "~/lib/utils";
 // PASOS:
 // 1. Buscar las flores mas viejas en la base de datos y restarlas
 // 2. Crear una nueva venta con el producto Id
@@ -91,11 +92,21 @@ export async function createSale(data: Data[], user: User) {
           createdBy: user.id,
         },
       });
+      await db.notification.create({
+        data: {
+          concept: `Venta del producto - ${item.name} - exitosa.`,
+          activity: `Se realizo la venta de ${
+            item.amount
+          } producto/s por la cantidad de ${formatToMXN(
+            item.price * item.amount
+          )}`,
+          createdBy: user.id,
+        },
+      });
     });
 
     // Esperamos a que todas las promesas de data se resuelvan
     await Promise.all(promises);
-
     return oldestFlowers;
   } catch (error) {
     console.log(error);

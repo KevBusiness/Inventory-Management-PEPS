@@ -2,6 +2,7 @@ import { LoaderFunctionArgs } from "@remix-run/node";
 import {
   Link,
   Outlet,
+  useLoaderData,
   useLocation,
   useNavigate,
   useSearchParams,
@@ -22,15 +23,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { getNotifications } from "~/controllers/notifications.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticator.isAuthenticated(request, {
+  const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
-  return null;
+  try {
+    const notifications = await getNotifications();
+    return { user, notifications };
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
 };
 
 export default function New() {
+  const data = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -94,9 +103,13 @@ export default function New() {
             >
               <BsBell />
             </Button>
-            <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
-              8
-            </div>
+            {!data?.notifications.filter(
+              (notify) => notify.createdBy !== data.user?.id
+            ).length ? null : (
+              <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
+                {data?.notifications.length}
+              </div>
+            )}
           </div>
         </div>
       </div>

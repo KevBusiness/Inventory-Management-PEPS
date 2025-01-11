@@ -123,8 +123,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const flowersData = formData.get("flowers");
       const status_type = formData.get("status_type") as
         | "Pedido"
-        | "Disponible"
-        | "Agotado";
+        | "Disponible";
       if (!flowersData) {
         throw new Error("Flowers data is missing");
       }
@@ -139,6 +138,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             0
           ),
           folio: generateFolioNumber(),
+          process: status_type === "Disponible" ? true : false,
+          deliveryDate: status_type === "Disponible" ? new Date() : null,
         },
       });
       const location = await db.location.findUnique({
@@ -164,6 +165,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             locationId: location?.id,
           },
         });
+      });
+      await db.notification.create({
+        data: {
+          concept:
+            status_type === "Disponible"
+              ? "Inventario Añadido"
+              : "Solicitud de pedido",
+          activity:
+            status_type === "Disponible"
+              ? `Se acaba de recibir un nuevo pedido FOLIO-${ticketCreated.folio}`
+              : `Se solicito un nuevo pedido FOLIO-${ticketCreated.folio}`,
+          createdBy: user?.id!,
+        },
       });
       session.flash("success", "Entrada realizada correctamente.");
       return redirect("/dashboard", {
@@ -655,7 +669,7 @@ export default function NewTicket() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="Pedido">Pedido</SelectItem>
-                <SelectItem value="Entregado">Entregado</SelectItem>
+                <SelectItem value="Disponible">Entregado</SelectItem>
               </SelectContent>
             </Select>
             <Button type="submit" className="h-12 w-36">

@@ -169,21 +169,27 @@ export default function TicketsMain() {
         transition={{ duration: 0.5 }}
       >
         <AnimatePresence>
-          {filteredTickets.map((ticket, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <TicketCard
-                index={index}
-                ticket={ticket}
-                onFocus={selectedTicket}
-              />
-            </motion.div>
-          ))}
+          {filteredTickets.length > 0 ? (
+            filteredTickets.map((ticket, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <TicketCard
+                  index={index}
+                  ticket={ticket}
+                  onFocus={selectedTicket}
+                />
+              </motion.div>
+            ))
+          ) : (
+            <p className="text-muted-foreground">
+              No existen tickets disponibles.
+            </p>
+          )}
         </AnimatePresence>
       </motion.div>
       {selectedTicket && (

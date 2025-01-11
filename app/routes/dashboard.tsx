@@ -26,6 +26,7 @@ import {
 } from "~/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";
 import { DateRange } from "react-day-picker";
+import { getNotifications } from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -42,9 +43,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
     failureRedirect: "/",
   });
   const session = await getSession(request.headers.get("Cookie"));
-  const fetchData = await getData();
+  const [fetchData, notifications] = await Promise.all([
+    getData(),
+    getNotifications(),
+  ]);
   return data(
-    { user: user!, message: session.get("success"), ...fetchData },
+    {
+      user: user!,
+      message: session.get("success"),
+      notifications,
+      ...fetchData,
+    },
     { headers: { "Set-Cookie": await commitSession(session) } }
   );
 }
@@ -58,7 +67,7 @@ export default function Dashboard() {
   );
 
   return (
-    <Layout user={data.user}>
+    <Layout user={data.user} notifications={data?.notifications}>
       <div className="mt-5 mx-5 flex items-center gap-x-5">
         {data.tickets.length > 0 &&
         data.chartsData.sales.data.length > 0 &&
@@ -128,8 +137,8 @@ export default function Dashboard() {
       <section className="mx-5 grid grid-cols-2 gap-x-5">
         <div className="p-2 h-[550px] overflow-y-auto space-y-5">
           <p>Actividad Reciente</p>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <ActivityCard key={i} index={i} />
+          {data?.notifications.map((notify, i) => (
+            <ActivityCard key={i} index={i} data={notify} />
           ))}
         </div>
         <div className="p-2 h-[550px]">

@@ -24,6 +24,7 @@ import CreateProduct from "~/components/cards/create_product";
 import { Input } from "~/components/ui/input";
 import { createSale } from "~/controllers/pos.server";
 import { toast } from "~/hooks/use-toast";
+import { getNotifications } from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -102,7 +103,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     failureRedirect: "/",
   });
   try {
-    const [flowers, products] = await db.$transaction([
+    const [flowers, products, notifications] = await Promise.all([
       db.flowerBox.findMany({
         select: {
           id: true,
@@ -110,6 +111,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         },
       }),
       db.product.findMany(),
+      getNotifications(),
     ]);
     const sortedProductsData = products.map((product) => ({
       ...product,
@@ -120,7 +122,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ...flower,
       select: false,
     }));
-    return { user, flowers: sortedFlowers, products: sortedProductsData };
+    return {
+      user,
+      flowers: sortedFlowers,
+      products: sortedProductsData,
+      notifications,
+    };
   } catch (error) {
     return null;
   }
@@ -194,7 +201,7 @@ export default function Pos() {
   };
 
   return (
-    <MainLayout user={data?.user}>
+    <MainLayout user={data?.user} notifications={data?.notifications}>
       <p className="mt-2 text-sm pl-5">Punto de venta.</p>
       <div className="mt-2 px-5 w-full flex gap-x-3">
         <div className="w-1/2 h-[620px] max-h-[620px border-r pt-2">

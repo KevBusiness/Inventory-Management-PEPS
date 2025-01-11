@@ -50,22 +50,11 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import {
-  getData,
-  UpdateInventory,
-} from "~/database/controller/adjust-inventory.server";
+import { getData, updateFlower } from "~/controllers/adjust.server";
 import { useCallback, useRef, useState } from "react";
 import { authenticator } from "~/services/auth.server";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 import { Checkbox } from "~/components/ui/checkbox";
-import { l } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
-import { extname } from "node:path";
-
-type AdjustField = {
-  action: string;
-  flowerId: number;
-  value: number;
-};
 
 export const meta: MetaFunction = () => {
   return [
@@ -83,6 +72,26 @@ const steps = [
   { label: "Guardar datos", icon: <LiaSaveSolid /> },
 ];
 
+interface FlowerData {
+  id: number;
+  name: string;
+  oldFresh: number;
+  oldWilted: number;
+  currentFresh: number | null;
+  currentWilted: number | null;
+  location: string | null;
+  oldAlert: number;
+  currentAlert: number | null;
+}
+
+interface SensitiveData extends FlowerData {
+  concept: string;
+  adjustment: number;
+  incorrect: boolean;
+  reason: string;
+  type: string;
+}
+
 export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
@@ -94,8 +103,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!ticketId) throw new Error("No existe un ticketId");
   const values = formData.get("values") as null | string;
   if (!values) throw new Error("No existe data");
-  const data = JSON.parse(values) as AdjustField[];
-  await UpdateInventory(data, user!, +ticketId!);
+  const data = JSON.parse(values) as SensitiveData[];
+  await updateFlower(data, +ticketId, user!);
+  return null;
   session.flash("success", "El inventario fue ajustado correctamente.");
   return redirect("/dashboard", {
     headers: {
@@ -118,41 +128,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return null;
 };
 
-interface FlowerData {
-  id: number;
-  name: string;
-  oldFresh: number;
-  oldWilted: number;
-  currentFresh: number | null;
-  currentWilted: number | null;
-  location: string | null;
-  oldAlert: number;
-  currentAlert: number | null;
-}
-
-interface SensitiveData extends FlowerData {
-  concept: string;
-  adjustment: number;
-  incorrect: boolean;
-}
-
 export default function AdjustInventory() {
   const fetchData = useLoaderData<typeof loader>();
   const [sensitiveData, setSensitiveData] = useState<SensitiveData[]>([]);
-  const [issuesData, setIssuesData] = useState<any[]>([]);
   const formRef = useRef(null);
   const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
   const step = searchParams.get("step");
   const searchTerm = searchParams.get("search");
   const selectedTicket = searchParams.get("current");
-
   const filteredTickets = Array.isArray(fetchData)
     ? fetchData.filter((ticket) =>
         ticket.id.toString().includes(searchTerm || "")
       )
     : [];
-
   const handleSubmit = () => {
     const formData = new FormData(
       formRef.current as unknown as HTMLFormElement
@@ -226,10 +215,16 @@ export default function AdjustInventory() {
       .map((item) => {
         let concept = "Ninguno";
         let adjustment = 0;
-
+        let type = "";
         if (item.currentWilted === null && item.currentFresh) {
           adjustment = item.currentFresh - item.oldFresh;
           concept = "Vendiendo";
+          type = "Frescas";
+        }
+        if (item.currentFresh === null && item.currentWilted) {
+          adjustment = item.currentWilted - item.oldWilted;
+          concept = "Vendiendo";
+          type = "Marchitas";
         }
         if (
           item.oldWilted < item.oldFresh &&
@@ -237,6 +232,11 @@ export default function AdjustInventory() {
           item.currentWilted !== null
         ) {
           const total = item.oldFresh + item.oldWilted;
+          if (item.currentFresh > item.currentWilted) {
+            type = "Frescas";
+          } else {
+            type = "Marchitas";
+          }
           if (item.currentFresh + item.currentWilted === total) {
             adjustment = 0;
             concept = "De frescas a marchitas";
@@ -247,7 +247,14 @@ export default function AdjustInventory() {
             concept = "Vendiendo";
           }
         }
-        return { concept, adjustment, incorrect: false, ...item };
+        return {
+          type,
+          reason: "",
+          concept,
+          adjustment,
+          incorrect: false,
+          ...item,
+        };
       }) as SensitiveData[];
     const invalidData = result.filter((item: any) => {
       // Verificar que `currentFresh` sea mayor que `oldFresh` y que `currentWilted` o `currentAlert` no sean mayores que sus respectivas propiedades
@@ -270,10 +277,10 @@ export default function AdjustInventory() {
       return item.currentFresh > 0 || item.currentWilted > 0;
     });
     if (sensitiveData.length > 0) {
-      setSensitiveData(sensitiveData);
+      setSensitiveData(result);
       return;
     }
-    console.log("No hay datos sensibles", result);
+    submit({ values: JSON.stringify(result) }, { method: "POST" });
     return;
   };
 
@@ -282,6 +289,12 @@ export default function AdjustInventory() {
       prev.map((item) =>
         item.id === id ? { ...item, incorrect: value } : item
       )
+    );
+  };
+
+  const handleReason = (id: number, value: string) => {
+    setSensitiveData((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, reason: value } : item))
     );
   };
 
@@ -461,6 +474,7 @@ export default function AdjustInventory() {
             </Table>
             {sensitiveData.length > 0 && (
               <AlertDialogComponent
+                handleReason={handleReason}
                 sensitiveData={sensitiveData}
                 handleCorrect={handleCorrect}
               />
@@ -474,10 +488,21 @@ export default function AdjustInventory() {
 const AlertDialogComponent = ({
   sensitiveData,
   handleCorrect,
+  handleReason,
 }: {
   sensitiveData: SensitiveData[];
   handleCorrect: (id: number, value: boolean) => void;
+  handleReason: (id: number, value: string) => void;
 }) => {
+  const submit = useSubmit();
+  const sortedData = sensitiveData.filter((item: any) => {
+    return item.currentFresh > 0 || item.currentWilted > 0;
+  });
+
+  const handleSubmit = () => {
+    submit({ values: JSON.stringify(sensitiveData) }, { method: "POST" });
+  };
+
   return (
     <AlertDialog open>
       <AlertDialogContent>
@@ -506,7 +531,7 @@ const AlertDialogComponent = ({
           </TableHeader>
 
           <TableBody>
-            {sensitiveData.map((item, index) => (
+            {sortedData.map((item, index) => (
               <TableRow key={index}>
                 <TableCell>{item.name}</TableCell>
                 <TableCell className="text-center">
@@ -528,64 +553,48 @@ const AlertDialogComponent = ({
                 <TableCell className="text-center">{item.adjustment}</TableCell>
                 <TableCell>{item.concept}</TableCell>
                 <TableCell>
-                  <div className="flex justify-center">
-                    <Checkbox
-                      onCheckedChange={(value) =>
-                        handleCorrect(item.id, value as boolean)
-                      }
-                    />
-                  </div>
+                  {item.adjustment !== 0 && (
+                    <div className="flex justify-center">
+                      <Checkbox
+                        onCheckedChange={(value) =>
+                          handleCorrect(item.id, value as boolean)
+                        }
+                      />
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-
+        {sortedData.filter((item) => item.incorrect === true).length > 0 && (
+          <span className="font-semibold">Conceptos incorrectos</span>
+        )}
+        {sortedData
+          .filter((item) => item.incorrect === true)
+          .map((item, i) => (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, delay: i * 0.1 }}
+              key={i}
+              className="flex gap-x-5 items-center"
+            >
+              <span className="font-semibold">{item.name}</span>
+              <Input
+                onChange={(e) => handleReason(item.id, e.target.value)}
+                type="text"
+                className="invalid:border-red-500 invalid:focus:ring-red-500 valid:placeholder-shown:border-neutral-200 valid:placeholder-shown:focus:ring-blue-500 valid:border-blue-500 valid:focus:ring-blue-500  peer"
+                placeholder={`Explica la razon del ajuste de ${item.name}`}
+              />
+            </motion.div>
+          ))}
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction>Continuar</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
-
-const FixIssuesDialog = ({ issues }: { issues: any[] }) => {
-  return (
-    <AlertDialog open>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Corregir incorrecciones</AlertDialogTitle>
-          <AlertDialogDescription>
-            Algunos datos los marcastes como incorrectos, por favor ingrese su
-            razon.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Flor</TableHead>
-              <TableHead>Cantidad Fresca Actual</TableHead>
-              <TableHead>Cantidad Marchita Actual</TableHead>
-              <TableHead>Nueva Cantidad Fresca</TableHead>
-              <TableHead>Nueva Cantidad Marchita</TableHead>
-              <TableHead>Ajuste / Cantidad</TableHead>
-              <TableHead>Concepto</TableHead>
-              <TableHead>Marca si es incorrecto</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <TableRow>
-              <TableCell>1</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction>Continuar</AlertDialogAction>
+          <AlertDialogAction onClick={handleSubmit}>
+            Continuar
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -1,4 +1,8 @@
-import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
 import {
   Form,
   useLoaderData,
@@ -10,25 +14,39 @@ import {
   createLocation,
   deleteLocation,
   getSortedLocations,
-} from "~/database/controller/general/locations.server";
+} from "~/controllers/locations.server";
 import { MapPin } from "lucide-react";
 import MainLayout from "~/layouts/main";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
+import { getNotifications } from "~/controllers/notifications.server";
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "Ubicaciones | Inventory Management" },
+    {
+      name: "description",
+      content: "Ubicaciones actuales de las flores",
+    },
+  ];
+};
 
 export async function action({ request }: ActionFunctionArgs) {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
   const formData = await request.formData();
   switch (request.method) {
     case "POST":
       const name = formData.get("location_name") as string;
       const defaultLocation = formData.get("location_default") as string;
-      await createLocation(name, defaultLocation);
+      await createLocation(name, defaultLocation, user?.id!);
       break;
     case "DELETE":
       const locationId = +formData.get("location_id")!;
-      await deleteLocation(locationId);
+      await deleteLocation(locationId, user?.id!);
       break;
     default:
       break;
@@ -40,8 +58,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
-  const locations = await getSortedLocations();
-  return { user: user!, locations };
+  const [locations, notifications] = await Promise.all([
+    getSortedLocations(),
+    getNotifications(),
+  ]);
+  return { user: user!, locations, notifications };
 }
 
 export default function locations() {
@@ -55,7 +76,7 @@ export default function locations() {
     e.currentTarget.reset();
   };
   return (
-    <MainLayout user={data.user}>
+    <MainLayout user={data.user} notifications={data.notifications}>
       <p className="mt-2 text-sm pl-5">
         Encuentra de manera rapida lo que buscas.
       </p>

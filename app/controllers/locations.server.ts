@@ -1,5 +1,5 @@
+import db from "../database/prisma.server";
 import capitalize from "lodash/capitalize";
-import db from "../../prisma.server";
 
 interface Flower {
   currentStockFresh: number;
@@ -121,7 +121,8 @@ export async function getSortedLocations() {
 
 export async function createLocation(
   name: string,
-  defaultLocation: string | null
+  defaultLocation: string | null,
+  createdBy: number
 ) {
   try {
     let sortedName: string = "";
@@ -129,25 +130,52 @@ export async function createLocation(
     name.split(" ").forEach((word) => {
       sortedName += " " + capitalize(word);
     });
-    await db.location.create({
+
+    const location = await db.location.create({
       data: {
         name: sortedName,
         defaultLocation: defaultLocation ? true : null,
       },
     });
+
+    await db.notification.create({
+      data: {
+        concept: "Nueva ubicacion",
+        activity: `Ubicación ${sortedName} creada.`,
+        createdBy: createdBy,
+      },
+    });
+
+    return location;
   } catch (error) {
     console.log(error);
     return null;
   }
 }
 
-export async function deleteLocation(id: number) {
+export async function deleteLocation(id: number, userId: number) {
   try {
+    const locationFound = await db.location.findUnique({
+      where: {
+        id,
+      },
+    });
+
     await db.location.delete({
       where: {
         id,
       },
     });
+
+    await db.notification.create({
+      data: {
+        concept: "Ubicacion eliminada",
+        activity: `La ubicacion ${locationFound?.name} a sido eliminada.`,
+        createdBy: userId,
+      },
+    });
+
+    return { success: true };
   } catch (error) {
     console.log(error);
     return null;

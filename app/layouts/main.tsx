@@ -1,11 +1,6 @@
-import {
-  useLocation,
-  Outlet,
-  useSearchParams,
-  useParams,
-} from "@remix-run/react";
+import { useLocation, useSearchParams, useParams } from "@remix-run/react";
 import capitalize from "lodash/capitalize";
-import { User } from "@prisma/client";
+import { Notification, User } from "@prisma/client";
 import { IoHomeOutline } from "react-icons/io5";
 import { VscOutput } from "react-icons/vsc";
 import { PiFlowerTulipDuotone } from "react-icons/pi";
@@ -73,9 +68,11 @@ const routes = [
 export default function MainLayout({
   children,
   user,
+  notifications,
 }: {
   children: React.ReactNode;
   user?: User | null;
+  notifications: Notification[] | undefined;
 }) {
   const location = useLocation();
   const { id } = useParams();
@@ -174,14 +171,19 @@ export default function MainLayout({
                   {user?.name} {user?.lastname}
                 </span>
               </p>
-              {/* TODO: ADD sistema of notifications */}
               <div className="relative">
                 <Button size={"icon"} type="button" variant={"ghost"}>
                   <BsBell />
                 </Button>
-                <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
-                  8
-                </div>
+                {typeof notifications !== "undefined" ? (
+                  !notifications.filter(
+                    (notify) => notify.createdBy !== user?.id
+                  ).length ? null : (
+                    <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
+                      {notifications.length}
+                    </div>
+                  )
+                ) : null}
               </div>
             </div>
           </div>

@@ -59,3 +59,24 @@ export function calculateProfitOrLossPercentage(
     return -loss.toFixed(0);
   }
 }
+
+export function getTimeElapsed(createdAt: Date) {
+  const now = new Date(); // Fecha y hora actuales
+  const timeDifference = now.getTime() - new Date(createdAt).getTime(); // Diferencia en milisegundos
+
+  const seconds = Math.floor(timeDifference / 1000); // Convierte milisegundos a segundos
+  const minutes = Math.floor(seconds / 60); // Convierte segundos a minutos
+  const hours = Math.floor(minutes / 60); // Convierte minutos a horas
+  const days = Math.floor(hours / 24); // Convierte horas a días
+
+  // Lógica para determinar el formato adecuado
+  if (days > 0) {
+    return `${days} días atrás`;
+  } else if (hours > 0) {
+    return `${hours} horas atrás`;
+  } else if (minutes > 0) {
+    return `${minutes} minutos atrás`;
+  } else {
+    return `${seconds} segundos atrás`;
+  }
+}
