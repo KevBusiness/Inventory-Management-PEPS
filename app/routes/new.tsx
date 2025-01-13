@@ -1,4 +1,4 @@
-import { LoaderFunctionArgs } from "@remix-run/node";
+import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import {
   Link,
   Outlet,
@@ -6,6 +6,7 @@ import {
   useLocation,
   useNavigate,
   useSearchParams,
+  useSubmit,
 } from "@remix-run/react";
 import { BsBell } from "react-icons/bs";
 import { Button } from "~/components/ui/button";
@@ -23,7 +24,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { getNotifications } from "~/controllers/notifications.server";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
+import { Notification, NotificationView, User } from "@prisma/client";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
+import { getTimeElapsed } from "~/lib/utils";
+
+export async function action({ request }: ActionFunctionArgs) {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
+  const formData = await request.formData();
+  const ref = formData.get("ref") as string;
+  switch (ref) {
+    case "notifications":
+      const notifications = JSON.parse(
+        formData.get("notifications") as string
+      ) as number[];
+      try {
+        await readNotifications(notifications, user!);
+        return null;
+      } catch (error) {
+        console.log(error);
+        return null;
+      }
+      break;
+    default:
+      break;
+  }
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await authenticator.isAuthenticated(request, {
@@ -38,6 +73,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 };
 
+interface NotificationProps extends Notification {
+  user: User;
+  seenBy: NotificationView[];
+}
+
 export default function New() {
   const data = useLoaderData<typeof loader>();
   const navigate = useNavigate();
@@ -45,6 +85,25 @@ export default function New() {
   const [searchParams, setSearchParams] = useSearchParams();
   const path = location.pathname.split("/")[2];
   const step = searchParams.get("step");
+  const submit = useSubmit();
+
+  const handleReadNotifications = (data: NotificationProps[]) => {
+    const notifications = data.map((notify) => notify.id);
+    submit(
+      { notifications: JSON.stringify(notifications), ref: "notifications" },
+      { method: "POST" }
+    );
+  };
+
+  const sortedNotifications = data?.notifications?.length
+    ? data?.notifications
+        .filter((notify) => notify.createdBy !== data?.user?.id)
+        .filter(
+          (notify) =>
+            !notify.seenBy.some((view) => view.userId === data?.user?.id)
+        )
+    : [];
+
   return (
     <main className="bg-gray-100 h-screen flex flex-col">
       <div className="flex items-center justify-between py-5 px-5 z-10 border-b shadow-md">
@@ -97,19 +156,30 @@ export default function New() {
             </SelectContent>
           </Select>
           <div className="relative">
-            <Button
-              className="h-10 w-10 border-none bg-accent shadow-none text-black hover:bg-black/10"
-              type="button"
-            >
-              <BsBell />
-            </Button>
-            {!data?.notifications.filter(
-              (notify) => notify.createdBy !== data.user?.id
-            ).length ? null : (
-              <div className="bg-red-500 rounded-full h-5 w-5 text-white font-medium text-xs flex justify-center items-center absolute top-0 right-0">
-                {data?.notifications.length}
-              </div>
-            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size={"icon"} type="button" variant={"ghost"}>
+                  <BsBell />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="mr-5 mt-1 space-y-2 h-[500px] max-h-[500px] overflow-y-auto">
+                {sortedNotifications.length > 0 ? (
+                  <span
+                    onClick={() => handleReadNotifications(sortedNotifications)}
+                    className="hover:cursor-pointer hover:underline hover:underline-offset-4 text-blue-600 text-xs"
+                  >
+                    Marcar como leidas.
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-center">
+                    No tienes notificaciones recientes
+                  </span>
+                )}
+                {sortedNotifications.map((notify) => (
+                  <NotificationCard key={notify.id} data={notify} />
+                ))}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>
@@ -118,3 +188,43 @@ export default function New() {
     </main>
   );
 }
+
+const NotificationCard = ({ data }: { data: NotificationProps }) => {
+  const { concept, activity, createdAt, user } = data;
+
+  // Formatear la fecha de creación
+  const formattedDate = new Date(createdAt).toLocaleDateString("es-ES", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  return (
+    <div className="bg-white border p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="flex flex-col space-y-2">
+        {/* Concepto de la notificación */}
+        <h3 className="text-sm font-medium text-gray-800">{concept}</h3>
+
+        {/* Actividad */}
+        <p className="text-xs text-gray-600">{activity}</p>
+
+        {/* Fecha de creación */}
+        <div className="text-xs text-gray-500">
+          <span className="font-medium">Fecha:</span> {formattedDate}
+        </div>
+
+        <div className="text-xs text-gray-500">
+          <span className="font-medium">Tiempo: </span>
+          {getTimeElapsed(data.createdAt)}
+        </div>
+
+        {/* Creado por */}
+        <div className="text-xs text-gray-500">
+          <span className="font-medium">Creado por:</span> {data.user.name}{" "}
+          {data.user.lastname}
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -15,6 +15,10 @@ import { toast } from "~/hooks/use-toast";
 import { formatToMXN } from "~/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { commitSession, getSession } from "~/services/alerts.session.server";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -27,7 +31,23 @@ export const meta: MetaFunction = () => {
 };
 
 export async function action({ request }: ActionFunctionArgs) {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
   const formData = await request.formData();
+  const ref = formData.get("ref") as string;
+  if (ref) {
+    const notifications = JSON.parse(
+      formData.get("notifications") as string
+    ) as number[];
+    try {
+      await readNotifications(notifications, user!);
+      return null;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
   const folio = formData.get("n_folio") as string;
   const session = await getSession(request.headers.get("Cookie"));
   if (!folio) return null;
@@ -59,6 +79,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
+  const notifications = await getNotifications();
   const url = new URL(request.url);
   const folio = Number(url.searchParams.get("folio")?.replace("FOLIO-", ""));
   if (folio) {
@@ -90,23 +111,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
         },
       });
       if (!ticketFound) {
-        return { user: user!, message: "Folio no encontrado." };
+        return { user: user!, message: "Folio no encontrado.", notifications };
       } else if (ticketFound.process) {
-        return { user: user!, message: "Ticket ya procesado." };
+        return { user: user!, message: "Ticket ya procesado.", notifications };
       } else {
-        return { user: user!, ticketFound, folio };
+        return { user: user!, ticketFound, folio, notifications };
       }
     } catch (error) {
       console.log(error);
       return { user: user! };
     }
   } else {
-    return { user: user! };
+    return { user: user!, notifications };
   }
 }
 
 export default function ProcessTicket() {
-  const { user, ticketFound, message, folio } = useLoaderData<typeof loader>();
+  const { user, ticketFound, message, folio, notifications } =
+    useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const submit = useSubmit();
 
@@ -117,7 +139,7 @@ export default function ProcessTicket() {
   }, [message]);
 
   return (
-    <MainLayout user={user}>
+    <MainLayout user={user} notifications={notifications}>
       <p className="mt-2 text-sm px-5">
         Ingrese el numero de folio para procesar el ticket.
       </p>

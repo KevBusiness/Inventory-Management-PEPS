@@ -1,3 +1,4 @@
+import { NotificationView, User } from "@prisma/client";
 import db from "~/database/prisma.server";
 
 export async function getNotifications() {
@@ -10,4 +11,16 @@ export async function getNotifications() {
       createdAt: "desc",
     },
   });
+}
+
+export async function readNotifications(data: number[], user: User) {
+  const promises = data.map(async (notificationId) => {
+    return await db.notificationView.create({
+      data: {
+        userId: user.id,
+        notificationId,
+      },
+    });
+  });
+  await Promise.all(promises);
 }

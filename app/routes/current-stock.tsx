@@ -1,5 +1,9 @@
 // TODO: Fix ubications
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getCurrentStock } from "~/database/controller/current-stock.server";
 import MainLayout from "~/layouts/main";
@@ -24,6 +28,10 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { formatToMXN } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -35,18 +43,53 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+export async function action({ request }: ActionFunctionArgs) {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
+  const formData = await request.formData();
+  const ref = formData.get("ref") as string;
+  switch (ref) {
+    case "notifications":
+      const notifications = JSON.parse(
+        formData.get("notifications") as string
+      ) as number[];
+      try {
+        await readNotifications(notifications, user!);
+        return null;
+      } catch (error) {
+        console.log(error);
+        return null;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
 
-  return { user: user!, stock: await getCurrentStock() };
+  try {
+    const [stock, notifications] = await Promise.all([
+      getCurrentStock(),
+      getNotifications(),
+    ]);
+    return { user: user!, stock, notifications };
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
 }
 
 export default function CurrentStock() {
-  const { user, stock } = useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
+  if (!data) throw new Error("No existen datos");
+  const { user, stock, notifications } = data;
   return (
-    <MainLayout user={user}>
+    <MainLayout user={user} notifications={notifications}>
       <p className="mt-2 text-sm pl-5">
         Existencias actuales dentro del almacen.
       </p>

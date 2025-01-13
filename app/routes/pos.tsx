@@ -24,7 +24,10 @@ import CreateProduct from "~/components/cards/create_product";
 import { Input } from "~/components/ui/input";
 import { createSale } from "~/controllers/pos.server";
 import { toast } from "~/hooks/use-toast";
-import { getNotifications } from "~/controllers/notifications.server";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -89,6 +92,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       break;
     case "application/x-www-form-urlencoded":
       formData = await request.formData();
+      const ref = formData.get("ref") as string;
+      if (ref) {
+        const notifications = JSON.parse(
+          formData.get("notifications") as string
+        ) as number[];
+        try {
+          await readNotifications(notifications, user!);
+          return null;
+        } catch (error) {
+          console.log(error);
+          return null;
+        }
+      }
       const data = JSON.parse(formData.get("data") as string);
       const resumen = await createSale(data, user!);
       return resumen;

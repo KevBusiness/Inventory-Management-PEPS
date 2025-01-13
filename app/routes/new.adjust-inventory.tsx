@@ -10,6 +10,7 @@ import {
   useSearchParams,
   useSubmit,
 } from "@remix-run/react";
+import db from "~/database/prisma.server";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "~/hooks/use-toast";
 import { HiAdjustmentsHorizontal } from "react-icons/hi2";
@@ -55,6 +56,7 @@ import { useCallback, useRef, useState } from "react";
 import { authenticator } from "~/services/auth.server";
 import { commitSession, getSession } from "~/services/alerts.session.server";
 import { Checkbox } from "~/components/ui/checkbox";
+import { readNotifications } from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -105,7 +107,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!values) throw new Error("No existe data");
   const data = JSON.parse(values) as SensitiveData[];
   await updateFlower(data, +ticketId, user!);
-  return null;
+  await db.notification.create({
+    data: {
+      concept: "Ajuste de inventario",
+      activity: `Se ajusto el inventario de N.lote ${ticketId}`,
+      createdBy: user?.id!,
+    },
+  });
   session.flash("success", "El inventario fue ajustado correctamente.");
   return redirect("/dashboard", {
     headers: {

@@ -1,5 +1,9 @@
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
-import { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
 import db from "~/database/prisma.server";
 import { authenticator } from "~/services/auth.server";
 import MainLayout from "~/layouts/main";
@@ -25,6 +29,10 @@ import {
 } from "~/components/ui/select";
 import { getPeps } from "~/database/controller/stock.server";
 import { Button } from "~/components/ui/button";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -49,6 +57,30 @@ type PEPS = {
   [key: string]: Transaction;
 };
 
+export async function action({ request }: ActionFunctionArgs) {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
+  const formData = await request.formData();
+  const ref = formData.get("ref") as string;
+  switch (ref) {
+    case "notifications":
+      const notifications = JSON.parse(
+        formData.get("notifications") as string
+      ) as number[];
+      try {
+        await readNotifications(notifications, user!);
+        return null;
+      } catch (error) {
+        console.log(error);
+        return null;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const user = await authenticator.isAuthenticated(request, {
@@ -56,7 +88,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
   if (url.searchParams.has("mode")) {
     const flowerId = url.searchParams.get("flowerId");
-    const [flower, flowerNames] = await db.$transaction([
+    const [flower, flowerNames, notifications] = await Promise.all([
       db.flower.findMany({
         where: {
           flowerBoxId: Number(flowerId) || 1,
@@ -68,20 +100,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
           name: true,
         },
       }),
+      getNotifications(),
     ]);
 
-    return { user, flowerNames, flower };
+    return { user, flowerNames, flower, notifications };
   } else {
-    return { user, result: await getPeps() };
+    const [result, notifications] = await Promise.all([
+      getPeps(),
+      getNotifications(),
+    ]);
+    return { user, result, notifications };
   }
 }
 
 export default function Inventory() {
-  const { user, result, flowerNames, flower } = useLoaderData<typeof loader>();
+  const { user, result, flowerNames, flower, notifications } =
+    useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get("mode");
   return (
-    <MainLayout user={user!}>
+    <MainLayout user={user!} notifications={notifications}>
       <main className="px-5">
         <p className="mt-2 text-sm">
           Todo el inventario de la empresa cronologicamente usando el metodo

@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { MetaFunction, LoaderFunctionArgs, data } from "@remix-run/node";
+import {
+  MetaFunction,
+  LoaderFunctionArgs,
+  data,
+  ActionFunctionArgs,
+} from "@remix-run/node";
 import {
   useLoaderData,
   useNavigation,
@@ -26,7 +31,10 @@ import {
 } from "~/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";
 import { DateRange } from "react-day-picker";
-import { getNotifications } from "~/controllers/notifications.server";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -37,6 +45,30 @@ export const meta: MetaFunction = () => {
     },
   ];
 };
+
+export async function action({ request }: ActionFunctionArgs) {
+  const user = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/",
+  });
+  const formData = await request.formData();
+  const ref = formData.get("ref") as string;
+  switch (ref) {
+    case "notifications":
+      const notifications = JSON.parse(
+        formData.get("notifications") as string
+      ) as number[];
+      try {
+        await readNotifications(notifications, user!);
+        return null;
+      } catch (error) {
+        console.log(error);
+        return null;
+      }
+      break;
+    default:
+      break;
+  }
+}
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
@@ -147,7 +179,7 @@ export default function Dashboard() {
       </section>
       <footer>
         <p className="text-center text-muted-foreground">
-          Plataforma administradora modo: PRUEBA
+          Plataforma administradora modo: BETA
         </p>
       </footer>
     </Layout>

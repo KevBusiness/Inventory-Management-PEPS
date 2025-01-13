@@ -21,7 +21,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
-import { getNotifications } from "~/controllers/notifications.server";
+import {
+  getNotifications,
+  readNotifications,
+} from "~/controllers/notifications.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -40,9 +43,17 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   switch (request.method) {
     case "POST":
-      const name = formData.get("location_name") as string;
-      const defaultLocation = formData.get("location_default") as string;
-      await createLocation(name, defaultLocation, user?.id!);
+      const ref = formData.get("ref");
+      if (ref) {
+        const notifications = JSON.parse(
+          formData.get("notifications") as string
+        );
+        await readNotifications(notifications, user!);
+      } else {
+        const name = formData.get("location_name") as string;
+        const defaultLocation = formData.get("location_default") as string;
+        await createLocation(name, defaultLocation, user?.id!);
+      }
       break;
     case "DELETE":
       const locationId = +formData.get("location_id")!;
