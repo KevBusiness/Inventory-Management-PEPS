@@ -6,7 +6,7 @@ async function main() {
   await db.user.create({
     data: {
       name: "Admin",
-      lastname: "Carrillo",
+      lastname: "Admin",
       credential: 123456,
       password: await bcrypt.hash("password", 10),
       role: "Owner",
