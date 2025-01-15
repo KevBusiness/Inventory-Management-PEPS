@@ -1,6 +1,3 @@
-import { saleTransaction, Ticket } from "@prisma/client";
-import { data } from "@remix-run/node";
-import { date } from "zod";
 import db from "~/database/prisma.server";
 
 export async function getData() {
@@ -10,8 +7,13 @@ export async function getData() {
         select: {
           saleDate: true,
           price: true,
-          productId: true,
           quantity: true,
+          productId: true,
+          product: {
+            select: {
+              flowers: true,
+            },
+          },
         },
         orderBy: {
           saleDate: "asc",
@@ -73,6 +75,12 @@ type FlowerFetch = {
   }[];
 };
 
+type EntryFlower = {
+  id: number;
+  name: string;
+  amount: number;
+};
+
 function sortedFlowers(data: FlowerFetch[]) {
   return data
     .map((flower) => {
@@ -110,6 +118,9 @@ type DataByDate = {
     quantity: number;
     saleDate: Date;
     productId: number | null;
+    product: {
+      flowers: string;
+    };
   }[];
 };
 
@@ -173,11 +184,44 @@ function groupDataByDate(data: any[]): DataByDate[] {
 }
 
 function sortedTransactions(data: any[]) {
-  const dataByDate = groupDataByDate(data);
-  const allData = dataByDate.map((item) => ({
-    date: item.date,
-    total: item.data.reduce((acc, x) => acc + x.price * x.quantity, 0),
-  }));
+  const dataByDate = groupDataByDate(data); // Supongo que este método agrupa los datos por fecha
+
+  const allData = dataByDate.map((item) => {
+    const totalWithProductId = item.data
+      .filter((x) => x.productId !== null) // Filtrar solo los que tienen productId
+      .reduce((acc, x) => {
+        try {
+          if (x.product && x.product.flowers) {
+            const flowers = JSON.parse(x.product.flowers) as EntryFlower[]; // Parseamos las flores
+            const totalFlowers = flowers.reduce(
+              (acc, flower) => acc + flower.amount,
+              0
+            );
+
+            if (totalFlowers === 0) {
+              return acc;
+            }
+
+            return acc + (x.quantity / totalFlowers) * x.price;
+          } else {
+            return acc + x.price * x.quantity;
+          }
+        } catch (error) {
+          console.error("Error al procesar flores para el producto:", x);
+          return acc;
+        }
+      }, 0);
+
+    const totalWithoutProductId = item.data
+      .filter((x) => x.productId === null)
+      .reduce((acc, x) => acc + x.price * x.quantity, 0);
+
+    return {
+      date: item.date,
+      total: totalWithProductId + totalWithoutProductId, // Sumamos ambos totales
+    };
+  });
+
   const onlySalesbyFlowers = dataByDate
     .map((item) => ({
       date: item.date,
@@ -191,7 +235,14 @@ function sortedTransactions(data: any[]) {
       date: item.date,
       total: item.data
         .filter((item) => item.productId !== null)
-        .reduce((acc, x) => acc + x.price * x.quantity, 0),
+        .reduce((acc, x) => {
+          const flowers = JSON.parse(x.product.flowers) as EntryFlower[];
+          const totalFlowers = flowers.reduce(
+            (acc, flower) => acc + flower.amount,
+            0
+          );
+          return acc + (x.quantity / totalFlowers) * x.price;
+        }, 0),
     }))
     .filter((item) => item.total > 0);
   return [allData, onlySalesbyFlowers, onlySalesByProduct];

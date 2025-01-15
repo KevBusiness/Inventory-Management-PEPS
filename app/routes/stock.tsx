@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { getPeps } from "~/database/controller/stock.server";
+import { getSortedStockData } from "~/database/controller/stock.server";
 import { Button } from "~/components/ui/button";
 import {
   getNotifications,
@@ -45,12 +45,13 @@ export const meta: MetaFunction = () => {
 };
 
 interface Transaction {
-  date: Date; // Usamos Date para la fecha
-  type: "Entrada" | "Salida"; // El tipo puede ser 'Compra' o 'Venta'
+  date: Date;
+  type: "Entrada" | "Salida" | "Perdida";
   amount: number;
-  value: number;
-  currentAmount?: number; // Se añadirá como propiedad adicional
-  currentValue?: number; // Se añadirá como propiedad adicional
+  total: number;
+  product?: boolean;
+  currentAmount?: number;
+  currentValue?: number;
 }
 
 type PEPS = {
@@ -106,7 +107,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return { user, flowerNames, flower, notifications };
   } else {
     const [result, notifications] = await Promise.all([
-      getPeps(),
+      getSortedStockData(),
       getNotifications(),
     ]);
     return { user, result, notifications };
@@ -118,6 +119,7 @@ export default function Inventory() {
     useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const mode = searchParams.get("mode");
+
   return (
     <MainLayout user={user!} notifications={notifications}>
       <main className="px-5">
@@ -196,12 +198,12 @@ export default function Inventory() {
                 <TableCell className="min-w-56 border-r">Saldo</TableCell>
                 {flower ? null : (
                   <>
-                    <TableCell rowSpan={2} className="border-r">
+                    {/* <TableCell rowSpan={2} className="border-r">
                       Movimientos
                     </TableCell>
                     <TableCell rowSpan={2} className="border-r">
                       Ubicaciones
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell rowSpan={2}>N# Ticket</TableCell>
                   </>
                 )}
@@ -263,7 +265,7 @@ export default function Inventory() {
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Entrada" &&
-                                  formatToMXN(item.value)}
+                                  formatToMXN(item.total)}
                               </span>
                             </div>
                           </TableCell>
@@ -274,18 +276,22 @@ export default function Inventory() {
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Salida" &&
-                                  formatToMXN(item.value)}
+                                  formatToMXN(item.total)}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell className="min-w-[112px] border-r">
                             <div className="flex">
                               <span className="min-w-[112px] max-w-[112px]">
-                                {item.type === "Perdida" && item.amount}
+                                {item.type === "Perdida"
+                                  ? item.amount === 0
+                                    ? "Frescas -> marchitas"
+                                    : item.amount
+                                  : null}
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Perdida" &&
-                                  formatToMXN(item.value)}
+                                  formatToMXN(item.total)}
                               </span>
                             </div>
                           </TableCell>
@@ -295,25 +301,26 @@ export default function Inventory() {
                                 {item.currentAmount}
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
-                                {item.currentValue &&
-                                  formatToMXN(item.currentValue)}
+                                {item.currentTotal &&
+                                  formatToMXN(item.currentTotal)}
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="min-w-32 max-w-32 border-r">
+                          {/* <TableCell className="min-w-32 max-w-32 border-r">
                             <Button className="h-8 w-full">Mostrar</Button>
-                          </TableCell>
-                          <TableCell className="min-w-24 max-w-24 border-r"></TableCell>
+                          </TableCell> */}
+                          {/* <TableCell className="min-w-24 max-w-24 border-r"></TableCell> */}
                           <TableCell className="min-w-24 max-w-24">
-                            <span className="font-semibold">
-                              {item.ticketId}
-                            </span>
-                            <Link
-                              to={`/tickets/${item.ticketId}`}
-                              className="text-sm underline underline-offset-2 block"
-                            >
-                              ir al Ticket
-                            </Link>
+                            {item.ticket ? (
+                              <Link
+                                to={`/tickets/${item.ticket}`}
+                                className="text-sm underline underline-offset-2 block"
+                              >
+                                ir al Ticket
+                              </Link>
+                            ) : (
+                              "Venta de producto"
+                            )}
                           </TableCell>
                         </TableRow>
                       ));
@@ -336,7 +343,7 @@ export default function Inventory() {
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Entrada" &&
-                                  formatToMXN(item.value)}
+                                  formatToMXN(item.total)}
                               </span>
                             </div>
                           </TableCell>
@@ -347,7 +354,7 @@ export default function Inventory() {
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Salida" &&
-                                  formatToMXN(item.value)}
+                                  formatToMXN(item.total)}
                               </span>
                             </div>
                           </TableCell>
@@ -357,11 +364,15 @@ export default function Inventory() {
                           >
                             <div className="flex">
                               <span className="min-w-[112px] max-w-[112px]">
-                                {item.type === "Perdida" && item.amount}
+                                {item.type === "Perdida"
+                                  ? item.amount === 0
+                                    ? "Frescas -> marchitas"
+                                    : item.amount
+                                  : null}
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
                                 {item.type === "Perdida" &&
-                                  formatToMXN(item.value)}
+                                  formatToMXN(item.total)}
                               </span>
                             </div>
                           </TableCell>
@@ -371,25 +382,26 @@ export default function Inventory() {
                                 {item.currentAmount}
                               </span>
                               <span className="min-w-[112px] max-w-[112px]">
-                                {item.currentValue &&
-                                  formatToMXN(item.currentValue)}
+                                {item.currentTotal &&
+                                  formatToMXN(item.currentTotal)}
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="min-w-32 max-w-32 border-r">
+                          {/* <TableCell className="min-w-32 max-w-32 border-r">
                             <Button className="h-8 w-full">Mostrar</Button>
-                          </TableCell>
-                          <TableCell className="min-w-24 max-w-24 border-r"></TableCell>
+                          </TableCell> */}
+                          {/* <TableCell className="min-w-24 max-w-24 border-r"></TableCell> */}
                           <TableCell className="min-w-24 max-w-24">
-                            <span className="font-semibold">
-                              {item.ticketId}
-                            </span>
-                            <Link
-                              to={`/tickets/${item.ticketId}`}
-                              className="text-sm underline underline-offset-2 block"
-                            >
-                              ir al Ticket
-                            </Link>
+                            {item.ticket ? (
+                              <Link
+                                to={`/tickets/${item.ticket}`}
+                                className="text-sm underline underline-offset-2 block"
+                              >
+                                ir al Ticket
+                              </Link>
+                            ) : (
+                              "Venta de producto"
+                            )}
                           </TableCell>
                         </TableRow>
                       );

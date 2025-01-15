@@ -34,6 +34,8 @@ export async function action({ request }: ActionFunctionArgs) {
   const user = await authenticator.isAuthenticated(request, {
     failureRedirect: "/",
   });
+  if (user?.role !== "Supervisor" && user?.role !== "Owner")
+    throw new Error("No tienes los permisos");
   const formData = await request.formData();
   const ref = formData.get("ref") as string;
   if (ref) {
@@ -52,16 +54,25 @@ export async function action({ request }: ActionFunctionArgs) {
   const session = await getSession(request.headers.get("Cookie"));
   if (!folio) return null;
   try {
-    await db.ticket.update({
-      where: {
-        folio: +folio,
-      },
-      data: {
-        process: true,
-        deliveryDate: new Date(),
-        status: "Disponible",
-      },
-    });
+    await db.$transaction([
+      db.ticket.update({
+        where: {
+          folio: +folio,
+        },
+        data: {
+          process: true,
+          deliveryDate: new Date(),
+          status: "Disponible",
+        },
+      }),
+      db.notification.create({
+        data: {
+          concept: "Ticket procesado",
+          activity: `El ticket con numero de FOLIO-${folio} fue procesado correctamente.`,
+          createdBy: user?.id!,
+        },
+      }),
+    ]);
     session.flash("success", "El ticket fue procesado.");
 
     return redirect("/dashboard", {

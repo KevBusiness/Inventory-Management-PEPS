@@ -38,55 +38,63 @@ export async function createSale(data: Data[], user: User) {
     let oldestFlowers: any[] = [];
     const promises = data.map(async (item) => {
       item.flowers = JSON.parse(item.flowers as string);
-      if (Array.isArray(item.flowers)) {
-        // Usamos un map para crear las promesas para cada flower
-        const flowerPromises = item.flowers.map(async (flower) => {
-          const flowerBox = await db.flowerBox.findFirst({
-            where: {
-              id: flower.id,
-            },
-            select: {
-              flowers: true,
-              name: true,
-            },
-          });
 
-          const flowerFound = flowerBox?.flowers
-            .sort(
-              (a, b) =>
-                new Date(a.createdAt).getTime() -
-                new Date(b.createdAt).getTime()
-            )
-            .filter((f) => f.currentStockFresh > flower.amount)[0];
+      if (!Array.isArray(item.flowers)) throw new Error("No es un array");
 
-          if (flowerFound) {
-            await db.flower.update({
-              where: {
-                id: flowerFound.id,
-              },
-              data: {
-                currentStockFresh: {
-                  decrement: flower.amount * item.amount,
-                },
-              },
-            });
-            oldestFlowers.push({
-              amount: flower.amount * item.amount,
-              loteId: flowerFound.ticketId,
-              name: flowerBox.name,
-              product: item.name,
-              sellAmount: item.amount,
-            });
-          }
+      const flowerPromises = item.flowers.map(async (flower) => {
+        const flowerBox = await db.flowerBox.findFirst({
+          where: {
+            id: flower.id,
+          },
+          select: {
+            flowers: true,
+            name: true,
+          },
         });
 
-        // Esperamos a que todas las promesas de flowers se resuelvan
-        await Promise.all(flowerPromises);
-      }
+        const flowerFound = flowerBox?.flowers
+          .sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          )
+          .filter((f) => f.currentStockFresh > flower.amount)[0];
+
+        if (flowerFound) {
+          await db.flower.update({
+            where: {
+              id: flowerFound.id,
+            },
+            data: {
+              currentStockFresh: {
+                decrement: flower.amount * item.amount,
+              },
+            },
+          });
+          oldestFlowers.push({
+            amount: flower.amount * item.amount,
+            loteId: flowerFound.ticketId,
+            name: flowerBox.name,
+            product: item.name,
+            sellAmount: item.amount,
+            currentPrice: flowerFound.current_price,
+          });
+        }
+      });
+
+      // Esperamos a que todas las promesas de flowers se resuelvan
+      await Promise.all(flowerPromises);
+
+      const totalQuantity =
+        item.flowers.reduce((acc, flower) => acc + flower.amount, 0) || 0;
+
       await db.saleTransaction.create({
         data: {
           price: item.price,
-          quantity: item.amount,
+          quantity: totalQuantity * item.amount,
+          priceIndividual: oldestFlowers.reduce(
+            (acc, flower) => acc + flower.currentPrice * flower.amount,
+            0
+          ),
           quality: "Fresca",
           productId: item.id,
           createdBy: user.id,

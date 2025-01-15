@@ -2,6 +2,7 @@ import db from "~/database/prisma.server";
 import { User } from "@prisma/client";
 import { getAllLocations } from "~/controllers/locations.server";
 import { getTicket } from "~/database/controller/general/tickets";
+import AdjustInventory from "~/routes/new.adjust-inventory";
 
 type FlowerData = {
   id: number;
@@ -153,11 +154,61 @@ export async function updateFlower(
                     : flowerFound?.flowerBox.currentWiltedPrice!,
                 quantity: Math.abs(adjustment),
                 quality: flower.type === "Frescas" ? "Fresca" : "Marchita",
+                ticketId,
               },
             }),
           ]);
         } else {
           // De frescas a marchitas o no sensibles
+          const currentAmountFlowers = flower.oldFresh + flower.oldWilted;
+          const prevAmountFlowers =
+            (flower.currentFresh || 0) + (flower.currentWilted || 0);
+          if (prevAmountFlowers === currentAmountFlowers) {
+            const freshRest = flower.oldFresh - (flower.currentFresh || 0);
+            const wiltedRest = flower.oldWilted - (flower.currentWilted || 0);
+            const totalFresh = freshRest * flowerFound?.current_price!;
+            const totalWilted =
+              wiltedRest * flowerFound?.flowerBox.currentWiltedPrice!;
+            await db.$transaction([
+              db.flowerHistory.create({
+                data: {
+                  wiltedQuantity: flower.oldWilted,
+                  freshQuantity: flower.oldFresh,
+                  flowerId: flower.id,
+                },
+              }),
+              db.flower.update({
+                where: {
+                  id: flower.id,
+                },
+                data: {
+                  currentStockFresh: currentFresh
+                    ? currentFresh
+                    : flowerFound?.currentStockFresh,
+                  currentwiltedFlowers: currentWilted
+                    ? currentWilted
+                    : flowerFound?.currentwiltedFlowers,
+                  locationId: flower.location
+                    ? +flower.location
+                    : flowerFound?.locationId,
+                  min: flower.currentAlert
+                    ? flower.currentAlert
+                    : flowerFound?.flowerBox.min,
+                },
+              }),
+              db.adjustTransaction.create({
+                data: {
+                  adjustInventoryId: inventoryAdjustment.id,
+                  flowerId: flower.id,
+                  total: totalFresh + totalWilted,
+                  amount: 0,
+                  type: flower.type,
+                  reason: "De frescas a marchitas",
+                },
+              }),
+            ]);
+            return;
+          }
           await db.$transaction([
             db.flowerHistory.create({
               data: {

@@ -69,7 +69,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         },
         sales: {
           select: {
-            total: true,
+            quantity: true,
+            price: true,
           },
         },
       },

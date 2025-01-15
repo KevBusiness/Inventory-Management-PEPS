@@ -6,6 +6,7 @@ import {
   ActionFunctionArgs,
 } from "@remix-run/node";
 import {
+  Link,
   useLoaderData,
   useNavigation,
   useSearchParams,
@@ -35,6 +36,7 @@ import {
   getNotifications,
   readNotifications,
 } from "~/controllers/notifications.server";
+import { Button } from "~/components/ui/button";
 
 export const meta: MetaFunction = () => {
   return [
@@ -100,83 +102,106 @@ export default function Dashboard() {
 
   return (
     <Layout user={data.user} notifications={data?.notifications}>
-      <div className="mt-5 mx-5 flex items-center gap-x-5">
-        {data.tickets.length > 0 &&
-        data.chartsData.sales.data.length > 0 &&
-        data.chartsData.inventory.data.length > 0 ? (
-          <DatePickerWithRange date={date} handleDate={setDate} />
-        ) : null}
-        {data.tickets.length > 0 && (
-          <div className="flex items-center gap-x-2">
-            <Switch
-              aria-description="show inventory charts"
-              id="mode-inventory"
-              onCheckedChange={(value) => {
-                setShowInventory(value);
-              }}
-            />
-            <label htmlFor="mode-inventory">Ver Inventario</label>
+      {!data.flowers.length ||
+      !data.chartsData.sales.data.length ||
+      !data.chartsData.inventory.data.length ? (
+        <div className="flex items-center justify-start flex-col h-screen gap-y-10 mt-10">
+          <span className="text-2xl font-semibold">
+            El inventario esta vacio, comienza solicitando un pedido.
+          </span>
+          <img src="/undraw_team-up_qeem.svg" className="w-96 h-96" />
+          <Button
+            asChild
+            className="hover:cursor-pointer w-44 h-12 p-2 text-sm text-white bg-gradient-to-r from-blue-500 to-blue-600 border-2 border-blue-300 ring-2 ring-blue-500/20 hover:shadow-2xl hover:scale-105 transition-all duration-150 ease-out rounded-md flex items-center justify-center gap-x-2"
+          >
+            <Link to={"/new/ticket"}>Solicitar pedido</Link>
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 mx-5 flex items-center gap-x-5">
+            {data.tickets.length > 0 &&
+            data.chartsData.sales.data.length > 0 &&
+            data.chartsData.inventory.data.length > 0
+              ? // <DatePickerWithRange date={date} handleDate={setDate} />
+                null
+              : null}
+            {data.tickets.length > 0 && (
+              <div className="flex items-center gap-x-2">
+                <Switch
+                  aria-description="show inventory charts"
+                  id="mode-inventory"
+                  onCheckedChange={(value) => {
+                    setShowInventory(value);
+                  }}
+                />
+                <label htmlFor="mode-inventory">Ver Inventario</label>
+              </div>
+            )}
+            {showInventory && (
+              <AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Select
+                    defaultValue={
+                      ticket ? ticket.toString() : data.tickets[0].id.toString()
+                    }
+                    onValueChange={(value) => setTicket(+value)}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Seleccione un ticket" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Tickets</SelectLabel>
+                        {data.tickets.length > 0 &&
+                          data.tickets.map((ticket) => (
+                            <SelectItem
+                              value={ticket.id.toString()}
+                              key={ticket.id}
+                            >{`Ticket ${ticket.id}`}</SelectItem>
+                          ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </motion.div>
+              </AnimatePresence>
+            )}
           </div>
-        )}
-        {showInventory && (
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Select
-                defaultValue={
-                  ticket ? ticket.toString() : data.tickets[0].id.toString()
-                }
-                onValueChange={(value) => setTicket(+value)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Seleccione un ticket" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Tickets</SelectLabel>
-                    {data.tickets.length > 0 &&
-                      data.tickets.map((ticket) => (
-                        <SelectItem
-                          value={ticket.id.toString()}
-                          key={ticket.id}
-                        >{`Ticket ${ticket.id}`}</SelectItem>
-                      ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </div>
-      <div className="mx-5 my-5 grid grid-cols-3 gap-x-5">
-        {data?.chartsData &&
-          Array.from({ length: 3 }).map((_, i) => (
-            <InfoCard
-              index={i}
-              key={i}
-              mode={showInventory ? "inventory" : "sales"}
-              data={
-                data.chartsData[showInventory ? "inventory" : "sales"].data[i]
-              }
-              ticket={ticket}
-            />
-          ))}
-      </div>
-      <section className="mx-5 grid grid-cols-2 gap-x-5">
-        <div className="p-2 h-[550px] overflow-y-auto space-y-5">
-          <p>Actividad Reciente</p>
-          {data?.notifications.map((notify, i) => (
-            <ActivityCard key={i} index={i} data={notify} />
-          ))}
-        </div>
-        <div className="p-2 h-[550px]">
-          {data?.flowers && <FlowerChart flowers={data.flowers} />}
-        </div>
-      </section>
+          <div className="mx-5 my-5 grid grid-cols-3 gap-x-5">
+            {data?.chartsData &&
+              Array.from({ length: 3 }).map((_, i) => (
+                <InfoCard
+                  index={i}
+                  key={i}
+                  mode={showInventory ? "inventory" : "sales"}
+                  data={
+                    data.chartsData[showInventory ? "inventory" : "sales"].data[
+                      i
+                    ]
+                  }
+                  ticket={ticket}
+                />
+              ))}
+          </div>
+          <section className="mx-5 grid grid-cols-2 gap-x-5">
+            <div className="p-2 h-[550px] overflow-y-auto space-y-5">
+              {data?.notifications.length > 0 && <p>Actividad Reciente</p>}
+              {data?.notifications.map((notify, i) => (
+                <ActivityCard key={i} index={i} data={notify} />
+              ))}
+            </div>
+            <div className="p-2 h-[550px]">
+              {data?.flowers && <FlowerChart flowers={data.flowers} />}
+            </div>
+          </section>
+        </>
+      )}
+
       <footer>
         <p className="text-center text-muted-foreground">
           Plataforma administradora modo: BETA

@@ -26,7 +26,8 @@ export async function getAllTickets() {
         },
         sales: {
           select: {
-            total: true,
+            quantity: true,
+            price: true,
           },
         },
       },

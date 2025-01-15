@@ -25,6 +25,7 @@ export async function getCurrentStock() {
             },
           },
         },
+        currentWiltedPrice: true,
       },
     });
     return stock.map((item) => ({
@@ -66,8 +67,8 @@ export async function getCurrentStock() {
       total: item.flowers.reduce(
         (acc, flower) =>
           acc +
-          (flower.currentStockFresh + (flower.currentwiltedFlowers || 0)) *
-            flower.current_price,
+          flower.currentStockFresh * flower.current_price +
+          (flower.currentwiltedFlowers || 0) * (item.currentWiltedPrice ?? 0),
         0
       ),
     }));

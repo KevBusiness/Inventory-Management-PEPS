@@ -8,13 +8,7 @@ export async function createIndividualSale(
   ticket: string,
   user: User
 ) {
-  const output = await db.output.create({
-    data: {
-      createdBy: user?.id!,
-      ticketId: Number(ticket!),
-      total: 0,
-    },
-  });
+  // update this on promisess
   flowers.forEach(async (flower) => {
     const flower_updated = await db.flower.update({
       where: {
@@ -36,21 +30,9 @@ export async function createIndividualSale(
           flower.type === "fresh" ? flower_updated.current_price : flower.price,
         quantity: flower.value,
         quality: flower.type === "fresh" ? "Fresca" : "Marchita",
-        outputId: output.id,
+        ticketId: +ticket,
       },
     });
-  });
-  await db.output.update({
-    where: {
-      id: output.id,
-    },
-    data: {
-      total: flowers.reduce(
-        (acc: number, flower: UpdatedFlowers) =>
-          acc + flower.value * flower.price,
-        0
-      ),
-    },
   });
   const ticketFound = await db.ticket.findUnique({
     where: {

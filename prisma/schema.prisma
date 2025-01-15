@@ -15,7 +15,7 @@ model User {
   password String
   role Role
   tickets Ticket[]
-  outputs Output[]
+  // outputs Output[]
   transactions saleTransaction[]
   adjustmentInventory InventoryAdjustment[]
   notifications Notification[]
@@ -38,7 +38,7 @@ model Ticket {
   updatedAt DateTime @updatedAt
   process Boolean? @default(false)
   folio Int @unique
-  sales Output[]
+  sales saleTransaction[]
   flowers Flower[]
   userId Int
   user User @relation(fields: [userId], references: [id])
@@ -50,17 +50,17 @@ enum TicketStatus {
   Disponible
   Agotado
 }
-model Output {
-  id Int @id @default(autoincrement())
-  createdBy Int
-  ticketId Int
-  sales saleTransaction[]
-  total Float
-  createdAt DateTime @default(now())
-  user User @relation(fields: [createdBy], references: [id])
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  @@map("outputs")
-}
+// model Output {
+//   id Int @id @default(autoincrement())
+//   createdBy Int
+//   ticketId Int
+//   sales saleTransaction[]
+//   total Float
+//   createdAt DateTime @default(now())
+//   user User @relation(fields: [createdBy], references: [id])
+//   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+//   @@map("outputs")
+// }
 model InventoryAdjustment {
   id Int @id @default(autoincrement())
   createdBy Int
@@ -121,14 +121,17 @@ model saleTransaction {
   quantity Int
   quality Quality
   saleDate DateTime @default(now())
+  priceIndividual Float?
   flowerId Int?
   outputId Int?
   productId Int?
   createdBy Int?
+  ticketId Int?
   user User? @relation(fields: [createdBy], references: [id])
   flower Flower? @relation(fields: [flowerId], references: [id], onDelete: Cascade)
-  output Output? @relation(fields: [outputId], references: [id])
+  // output Output? @relation(fields: [outputId], references: [id])
   product Product? @relation(fields: [productId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
   @@map("sale_transaction")
 }
 

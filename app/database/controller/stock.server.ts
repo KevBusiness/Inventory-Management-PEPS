@@ -1,87 +1,136 @@
 import db from "../prisma.server";
 
-type Entrie = {
+type Transaction = {
   date: Date;
   type: string;
   amount: number;
-  value: number;
+  total: number;
+  ticket: number;
   currentAmount?: number;
-  currentValue?: number;
-  ticketId: number;
+  currentTotal?: number;
 };
 
-type Transaction = {
-  date: string;
-  entries: Entrie[];
+type FlowerEntry = {
+  id: number;
+  name: string;
+  amount: number;
 };
 
-type Accumulator = {
-  currentAmount: number;
-  currentValue: number;
-  previousDate: Date;
-  items: Transaction[];
-};
-
-export async function getPeps() {
-  const [tickets, outputs] = await db.$transaction([
+const getStockPeps = async () => {
+  const [sales, tickets, adjusts] = await db.$transaction([
+    db.saleTransaction.findMany({
+      select: {
+        saleDate: true,
+        price: true,
+        quantity: true,
+        ticketId: true,
+        priceIndividual: true,
+        product: {
+          select: {
+            flowers: true,
+          },
+        },
+      },
+      orderBy: {
+        saleDate: "asc",
+      },
+    }),
     db.ticket.findMany({
       where: {
         process: true,
       },
       include: {
-        flowers: true,
-      },
-    }),
-    db.output.findMany({
-      select: {
-        createdAt: true,
-        ticketId: true,
-        total: true,
-        sales: {
-          select: {
-            quantity: true,
+        flowers: {
+          include: {
+            flowerBox: {
+              select: {
+                currentPrice: true,
+              },
+            },
           },
         },
       },
+      orderBy: {
+        deliveryDate: "asc",
+      },
+    }),
+    db.adjustTransaction.findMany({
+      include: {
+        inventory: {
+          select: {
+            ticketId: true,
+          },
+        },
+      },
+      orderBy: {
+        adjustDate: "asc",
+      },
     }),
   ]);
+  return { sales, tickets, adjusts };
+};
 
-  const x = tickets.map((ticket) => ({
+export const getSortedStockData = async () => {
+  const { sales, tickets, adjusts } = await getStockPeps();
+  const sortedSales = sales.map((sale) => {
+    if (sale.product) {
+      return {
+        date: sale.saleDate,
+        type: "Salida",
+        amount: sale.quantity,
+        total: sale.priceIndividual,
+        ticket: sale.ticketId!,
+      };
+    }
+    return {
+      date: sale.saleDate,
+      type: "Salida",
+      amount: sale.quantity,
+      total: sale.quantity * sale.price,
+      ticket: sale.ticketId!,
+    };
+  }) as Transaction[];
+  const sortedTickets = tickets.map((ticket) => ({
     date: ticket.deliveryDate!,
     type: "Entrada",
     amount: ticket.flowers.reduce(
       (acc, flower) => acc + flower.initialAmount,
       0
     ),
-    value: ticket.flowers.reduce(
+    total: ticket.flowers.reduce(
       (acc, flower) => acc + flower.initialAmount * flower.current_price,
       0
     ),
-    ticketId: ticket.id,
-  }));
-
-  const y = outputs.map((output) => ({
-    date: output.createdAt,
-    type: "Salida",
-    amount: output.sales.reduce((acc, sale) => acc + sale.quantity, 0),
-    value: output.total,
-    ticketId: output.ticketId,
-  }));
-  const mergedData = [...x, ...y] as Entrie[];
-  const result = mergedData
+    ticket: ticket.id,
+  })) as Transaction[];
+  const sortedAdjusts = adjusts
+    .filter((adjs) => adjs.reason !== null)
+    .map((adjs) => ({
+      date: adjs.adjustDate,
+      type: "Perdida",
+      amount: adjs.amount,
+      total: adjs.total,
+      ticket: adjs.inventory.ticketId,
+    })) as Transaction[];
+  const stockTransactions = [
+    ...sortedSales,
+    ...sortedTickets,
+    ...sortedAdjusts,
+  ];
+  const name = stockTransactions
     .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .reduce<Accumulator>(
+    .reduce(
       (acc, item) => {
         if (item.type === "Entrada") {
           acc.currentAmount += item.amount;
-          acc.currentValue += item.value;
+          acc.currentTotal += item.total;
         } else {
           acc.currentAmount -= item.amount;
-          acc.currentValue -= item.value;
+          acc.currentTotal -= item.total;
         }
 
         item.currentAmount = acc.currentAmount;
-        item.currentValue = acc.currentValue;
+        item.currentTotal = acc.currentTotal;
 
         const formattedDate = item.date.toISOString().split("T")[0];
 
@@ -100,13 +149,13 @@ export async function getPeps() {
       },
       {
         currentAmount: 0,
-        currentValue: 0,
+        currentTotal: 0,
         previousDate: new Date(),
-        items: [],
+        items: [] as any[],
       }
     );
-  const sortedData = result.items.map((item) => {
+  const sortedData = name.items.map((item) => {
     return item.entries.length > 1 ? item.entries : item.entries[0];
   });
   return sortedData;
-}
+};

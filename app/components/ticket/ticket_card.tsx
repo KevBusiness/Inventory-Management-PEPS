@@ -43,7 +43,8 @@ interface TicketFetchProps extends Ticket {
     current_price: number;
   }[];
   sales: {
-    total: number;
+    quantity: number;
+    price: number;
   }[];
 }
 
@@ -109,12 +110,18 @@ export default function ticketCard({
               <span className={cn("text-sm")}>
                 {calculateProfitOrLossPercentage(
                   ticket.total,
-                  ticket.sales.reduce((acc, sale) => acc + sale.total, 0)
+                  ticket.sales.reduce(
+                    (acc, sale) => acc + sale.quantity * sale.price,
+                    0
+                  )
                 )}
                 %
               </span>
               {ticket.total >
-              ticket.sales.reduce((acc, sale) => acc + sale.total, 0) ? (
+              ticket.sales.reduce(
+                (acc, sale) => acc + sale.quantity * sale.price,
+                0
+              ) ? (
                 <FaArrowTrendDown className="text-red-600" />
               ) : (
                 <FaArrowTrendUp className="text-green-600" />
@@ -124,7 +131,12 @@ export default function ticketCard({
         </CardTitle>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Venta Acumulada:{" "}
-          {formatToMXN(ticket.sales.reduce((acc, sale) => acc + sale.total, 0))}
+          {formatToMXN(
+            ticket.sales.reduce(
+              (acc, sale) => acc + sale.quantity * sale.price,
+              0
+            )
+          )}
         </p>
       </CardHeader>
       <CardContent>
