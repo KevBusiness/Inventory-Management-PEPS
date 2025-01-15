@@ -5,8 +5,8 @@ import bcrypt from "bcryptjs";
 async function main() {
   await db.user.create({
     data: {
-      name: "Kevin",
-      lastname: "Felix",
+      name: "Admin",
+      lastname: "Carrillo",
       credential: 123456,
       password: await bcrypt.hash("password", 10),
       role: "Owner",
